@@ -30,7 +30,7 @@ const ScorePanel: React.FC<ScorePanelProps> = ({
           <p className="text-sm font-medium text-gray-500">Score</p>
           <h2 className="text-4xl font-semibold">
             {score}
-            {wordScore && (
+            {wordScore !== undefined && wordScore > 0 && (
               <span className="text-xl text-green-600 ml-2">+{wordScore}</span>
             )}
           </h2>
