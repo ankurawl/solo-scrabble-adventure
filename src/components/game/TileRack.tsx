@@ -47,7 +47,7 @@ const TileRack: React.FC<TileRackProps> = ({
         {tiles.map((tile) => (
           <div 
             key={tile.id} 
-            className="transition-transform duration-200"
+            className="w-10 h-10 sm:w-12 sm:h-12 transition-transform duration-200"
             onDragEnd={handleTileDragEnd}
           >
             <Tile
