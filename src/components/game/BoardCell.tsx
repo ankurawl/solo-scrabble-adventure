@@ -47,7 +47,11 @@ const BoardCell: React.FC<BoardCellProps> = ({
     const tileToShow = placedTile || cell.tile;
     
     if (tileToShow) {
-      return <Tile tile={tileToShow} isPlayable={!cell.tile?.isPlaced} />;
+      return (
+        <div className="w-full h-full">
+          <Tile tile={tileToShow} isPlayable={!cell.tile?.isPlaced} />
+        </div>
+      );
     }
 
     return (
@@ -63,7 +67,7 @@ const BoardCell: React.FC<BoardCellProps> = ({
         'relative border border-gray-200/70 w-8 h-8 sm:w-10 sm:h-10',
         cell.type !== 'regular' && cell.type,
         isHighlighted && 'bg-primary/20 border-primary/40',
-        'transition-all duration-150'
+        'transition-all duration-150 p-0.5'
       )}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
