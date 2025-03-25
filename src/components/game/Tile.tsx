@@ -19,7 +19,8 @@ const Tile: React.FC<TileProps> = ({
   onTileClick,
 }) => {
   const handleDragStart = (e: React.DragEvent) => {
-    if (!isPlayable) return;
+    if (!isPlayable && tile.isPlaced) return; // Don't allow dragging permanently placed tiles
+    
     e.dataTransfer.setData('text/plain', tile.id);
     if (onDragStart) {
       onDragStart(e, tile);
@@ -39,9 +40,10 @@ const Tile: React.FC<TileProps> = ({
         'bg-scrabble-tile rounded-md shadow-tile select-none cursor-pointer',
         'transform transition-all duration-200 ease-out',
         isDragging ? 'dragging opacity-75' : 'hover:shadow-tile-hover hover:scale-102',
-        !isPlayable && 'opacity-50 cursor-default'
+        !isPlayable && tile.isPlaced && 'opacity-50 cursor-default',
+        !isPlayable && !tile.isPlaced && 'cursor-grab'
       )}
-      draggable={isPlayable}
+      draggable={isPlayable || !tile.isPlaced}
       onDragStart={handleDragStart}
       onClick={handleClick}
     >

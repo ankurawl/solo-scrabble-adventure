@@ -7,9 +7,10 @@ interface BoardProps {
   board: BoardCellType[][];
   onPlaceTile: (row: number, col: number, tileId: string) => void;
   currentDraggedTile: TileType | null;
+  placedTiles: { row: number; col: number; tile: TileType }[];
 }
 
-const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile }) => {
+const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile, placedTiles }) => {
   const [draggedOverCell, setDraggedOverCell] = useState<{ row: number; col: number } | null>(null);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -25,11 +26,18 @@ const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile })
 
   const handleCellDragOver = (e: React.DragEvent) => {
     const cellElement = e.currentTarget as HTMLDivElement;
-    const rect = cellElement.getBoundingClientRect();
     const row = parseInt(cellElement.getAttribute('data-row') || '0');
     const col = parseInt(cellElement.getAttribute('data-col') || '0');
     
     setDraggedOverCell({ row, col });
+  };
+
+  // Get placed tile for a specific cell
+  const getPlacedTileForCell = (row: number, col: number) => {
+    const placedTile = placedTiles.find(
+      (placedTile) => placedTile.row === row && placedTile.col === col
+    );
+    return placedTile ? placedTile.tile : null;
   };
 
   const highlightedCells = draggedOverCell ? [draggedOverCell] : [];
@@ -49,6 +57,7 @@ const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile })
                 onDrop={() => handleDrop(rowIndex, colIndex)}
                 onDragOver={handleCellDragOver}
                 highlightedCells={highlightedCells}
+                placedTile={getPlacedTileForCell(rowIndex, colIndex)}
               />
             </div>
           ))

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import Board from './Board';
@@ -31,17 +30,14 @@ const ScrabbleGame: React.FC = () => {
   const [potentialScore, setPotentialScore] = useState<number | undefined>(undefined);
   const [isCenterOccupied, setIsCenterOccupied] = useState(false);
 
-  // Initialize the game
   useEffect(() => {
     startNewGame();
   }, []);
 
-  // Calculate potential score when tiles are placed
   useEffect(() => {
     if (placedTiles.length > 0) {
       const boardCopy = JSON.parse(JSON.stringify(gameState.board.cells)) as BoardCell[][];
       
-      // Place tiles on the board copy
       placedTiles.forEach(({ row, col, tile }) => {
         boardCopy[row][col].tile = tile;
       });
@@ -79,7 +75,6 @@ const ScrabbleGame: React.FC = () => {
     }
   }, [placedTiles, gameState.board.cells, isCenterOccupied]);
 
-  // Start a new game
   const startNewGame = useCallback(() => {
     const newBoard = createBoard();
     const newBag = createTileBag();
@@ -101,42 +96,77 @@ const ScrabbleGame: React.FC = () => {
     toast.success('New game started!');
   }, []);
 
-  // Place a tile on the board
   const handlePlaceTile = useCallback((row: number, col: number, tileId: string) => {
     if (!gameState.isPlaying) return;
     
     const boardCell = gameState.board.cells[row][col];
+    
     if (boardCell.tile) {
       toast.error('This cell is already occupied');
       return;
     }
     
-    const tile = gameState.rack.find(t => t.id === tileId);
-    if (!tile) return;
+    const existingPlacedTileIndex = placedTiles.findIndex(
+      pt => pt.row === row && pt.col === col
+    );
     
-    // Add to placed tiles
-    setPlacedTiles(prev => [...prev, { row, col, tile }]);
+    if (existingPlacedTileIndex !== -1) {
+      const existingTile = placedTiles[existingPlacedTileIndex].tile;
+      setGameState(prev => ({
+        ...prev,
+        rack: [...prev.rack, existingTile]
+      }));
+      
+      setPlacedTiles(prev => prev.filter((_, index) => index !== existingPlacedTileIndex));
+    }
     
-    // Check if center square is now occupied
+    let tileToPlace: Tile | undefined;
+    let isFromRack = false;
+    let existingTilePosition: { row: number, col: number } | null = null;
+    
+    const rackTile = gameState.rack.find(t => t.id === tileId);
+    if (rackTile) {
+      tileToPlace = rackTile;
+      isFromRack = true;
+    } else {
+      const placedTileIndex = placedTiles.findIndex(pt => pt.tile.id === tileId);
+      if (placedTileIndex !== -1) {
+        tileToPlace = placedTiles[placedTileIndex].tile;
+        existingTilePosition = {
+          row: placedTiles[placedTileIndex].row,
+          col: placedTiles[placedTileIndex].col
+        };
+      }
+    }
+    
+    if (!tileToPlace) return;
+    
+    setPlacedTiles(prev => {
+      if (existingTilePosition) {
+        return prev.filter(pt => pt.tile.id !== tileId);
+      } else {
+        return [...prev, { row, col, tile: tileToPlace }];
+      }
+    });
+    
     if (row === 7 && col === 7) {
       setIsCenterOccupied(true);
     }
     
-    // Remove from rack
-    setGameState(prev => ({
-      ...prev,
-      rack: prev.rack.filter(t => t.id !== tileId)
-    }));
+    if (isFromRack) {
+      setGameState(prev => ({
+        ...prev,
+        rack: prev.rack.filter(t => t.id !== tileId)
+      }));
+    }
     
     setCurrentDraggedTile(null);
-  }, [gameState]);
+  }, [gameState, placedTiles]);
 
-  // Handle tile drag start
   const handleTileDragStart = useCallback((e: React.DragEvent, tile: Tile) => {
     setCurrentDraggedTile(tile);
   }, []);
 
-  // Shuffle tiles in the rack
   const handleShuffleTiles = useCallback(() => {
     setGameState(prev => ({
       ...prev,
@@ -146,7 +176,6 @@ const ScrabbleGame: React.FC = () => {
     toast.success('Tiles shuffled');
   }, []);
 
-  // Recall all placed tiles back to the rack
   const handleRecallTiles = useCallback(() => {
     if (placedTiles.length === 0) return;
     
@@ -163,7 +192,6 @@ const ScrabbleGame: React.FC = () => {
     toast.info('Tiles recalled to rack');
   }, [placedTiles]);
 
-  // Play the current word
   const handlePlayWord = useCallback(() => {
     if (placedTiles.length === 0) {
       toast.error('No tiles placed on the board');
@@ -172,7 +200,6 @@ const ScrabbleGame: React.FC = () => {
     
     const boardCopy = JSON.parse(JSON.stringify(gameState.board.cells)) as BoardCell[][];
     
-    // Place tiles on the board copy
     placedTiles.forEach(({ row, col, tile }) => {
       boardCopy[row][col].tile = tile;
     });
@@ -191,7 +218,6 @@ const ScrabbleGame: React.FC = () => {
       return;
     }
     
-    // Check if all words are valid
     const invalidWords = words.filter(word => !isValidWord(word));
     
     if (invalidWords.length > 0) {
@@ -199,23 +225,19 @@ const ScrabbleGame: React.FC = () => {
       return;
     }
     
-    // Calculate score
     let moveScore = 0;
     wordObjects.forEach(({ word, tiles, cells, direction }) => {
       moveScore += calculateWordScore(tiles, cells, direction);
     });
     
-    // Update the board with placed tiles
     const newBoard = JSON.parse(JSON.stringify(gameState.board.cells)) as BoardCell[][];
     placedTiles.forEach(({ row, col, tile }) => {
       newBoard[row][col].tile = { ...tile, isPlaced: true };
     });
     
-    // Draw new tiles
     const tilesToDraw = Math.min(placedTiles.length, gameState.bag.length);
     const { drawn, remaining } = drawTiles(gameState.bag, tilesToDraw);
     
-    // Update game state
     setGameState(prev => ({
       ...prev,
       board: { cells: newBoard },
@@ -224,11 +246,9 @@ const ScrabbleGame: React.FC = () => {
       score: prev.score + moveScore
     }));
     
-    // Reset placed tiles
     setPlacedTiles([]);
     setPotentialScore(undefined);
     
-    // If center wasn't occupied, it is now
     if (!isCenterOccupied) {
       setIsCenterOccupied(true);
     }
@@ -236,7 +256,6 @@ const ScrabbleGame: React.FC = () => {
     const wordsPlayed = words.join(', ');
     toast.success(`Played: ${wordsPlayed} for ${moveScore} points!`);
     
-    // Check if game is over (no tiles in rack and bag is empty)
     if (drawn.length < placedTiles.length && remaining.length === 0) {
       if (gameState.rack.length === 0) {
         toast.success(`Game over! Final score: ${gameState.score + moveScore}`);
@@ -260,6 +279,7 @@ const ScrabbleGame: React.FC = () => {
             board={gameState.board.cells} 
             onPlaceTile={handlePlaceTile} 
             currentDraggedTile={currentDraggedTile}
+            placedTiles={placedTiles}
           />
         </div>
         

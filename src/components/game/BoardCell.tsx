@@ -9,6 +9,7 @@ interface BoardCellProps {
   onDrop: (row: number, col: number) => void;
   onDragOver: (e: React.DragEvent) => void;
   highlightedCells?: { row: number; col: number }[];
+  placedTile?: TileType | null;
 }
 
 const CELL_TYPE_LABELS: Record<string, string> = {
@@ -25,6 +26,7 @@ const BoardCell: React.FC<BoardCellProps> = ({
   onDrop,
   onDragOver,
   highlightedCells = [],
+  placedTile,
 }) => {
   const isHighlighted = highlightedCells.some(
     (highlightedCell) => highlightedCell.row === cell.row && highlightedCell.col === cell.col
@@ -41,8 +43,11 @@ const BoardCell: React.FC<BoardCellProps> = ({
   };
 
   const renderCellContent = () => {
-    if (cell.tile) {
-      return <Tile tile={cell.tile} isPlayable={false} />;
+    // Check for placed tile from game state first
+    const tileToShow = placedTile || cell.tile;
+    
+    if (tileToShow) {
+      return <Tile tile={tileToShow} isPlayable={!cell.tile?.isPlaced} />;
     }
 
     return (
