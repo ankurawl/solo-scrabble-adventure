@@ -320,7 +320,7 @@ export const isValidMove = (
     }
   }
   
-  // Only check if new tiles connect to existing tiles after the first move has been played
+  // Skip connection check for the first move
   if (isCenterOccupied) {
     let connectedToExisting = false;
     
