@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import Board from './Board';
@@ -292,7 +291,7 @@ const ScrabbleGame: React.FC = () => {
             onPlayWord={handlePlayWord}
             onRecallTiles={handleRecallTiles}
             onNewGame={startNewGame}
-            canPlay={placedTiles.length > 0 && potentialScore !== undefined}
+            canPlay={placedTiles.length > 0}
             wordScore={potentialScore}
           />
           
