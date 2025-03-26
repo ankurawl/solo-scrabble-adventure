@@ -47,7 +47,7 @@ const ScorePanel: React.FC<ScorePanelProps> = ({
           disabled={!canPlay}
           className={cn(
             'flex items-center gap-2',
-            canPlay && 'bg-green-600 hover:bg-green-700'
+            canPlay ? 'bg-green-600 hover:bg-green-700' : ''
           )}
         >
           <Check className="h-4 w-4" />

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import Board from './Board';
@@ -193,6 +194,7 @@ const ScrabbleGame: React.FC = () => {
   }, [placedTiles]);
 
   const handlePlayWord = useCallback(() => {
+    console.log("Play Word button clicked");
     if (placedTiles.length === 0) {
       toast.error('No tiles placed on the board');
       return;
