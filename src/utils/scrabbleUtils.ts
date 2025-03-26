@@ -1,3 +1,4 @@
+
 import { Tile, BoardCell, Direction } from "@/types/scrabble";
 
 // Letter distribution and point values based on standard Scrabble
@@ -319,7 +320,6 @@ export const isValidMove = (
     }
   }
   
-  // Skip the connection check for the first move (when center is not yet occupied by a permanent tile)
   // Only check if new tiles connect to existing tiles after the first move has been played
   if (isCenterOccupied) {
     let connectedToExisting = false;
