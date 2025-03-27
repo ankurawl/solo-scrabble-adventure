@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import Board from './Board';
@@ -209,6 +210,7 @@ const ScrabbleGame: React.FC = () => {
     
     if (!validationResult.valid) {
       toast.error(validationResult.message);
+      handleRecallTiles(); // Auto-recall tiles on invalid move
       return;
     }
     
@@ -216,6 +218,7 @@ const ScrabbleGame: React.FC = () => {
     
     if (words.length === 0) {
       toast.error('No valid words formed');
+      handleRecallTiles(); // Auto-recall tiles on no words formed
       return;
     }
     
@@ -237,6 +240,7 @@ const ScrabbleGame: React.FC = () => {
       
       if (invalidWords.length > 0) {
         toast.error(`Invalid word${invalidWords.length > 1 ? 's' : ''}: ${invalidWords.join(', ')}`);
+        handleRecallTiles(); // Auto-recall tiles on invalid words
         return;
       }
       
@@ -283,8 +287,9 @@ const ScrabbleGame: React.FC = () => {
       toast.dismiss(loadingToastId);
       toast.error('Error validating words. Please try again.');
       console.error('Word validation error:', error);
+      handleRecallTiles(); // Auto-recall tiles on validation error
     }
-  }, [gameState, placedTiles, isCenterOccupied]);
+  }, [gameState, placedTiles, isCenterOccupied, handleRecallTiles]);
 
   return (
     <div className="flex flex-col items-center w-full max-w-5xl mx-auto px-4 py-8">
