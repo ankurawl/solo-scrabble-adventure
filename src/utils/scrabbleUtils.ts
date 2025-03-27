@@ -390,10 +390,14 @@ export const isValidMove = (
         break;
       }
     }
-    
+
     if (connectedToExisting) break;
   }
   
+  if (!connectedToExisting && isCenterOccupied) {
+    connectedToExisting = true;
+  }
+
   if (!connectedToExisting) {
     return { valid: false, message: "New tiles must connect to existing tiles" };
   }
