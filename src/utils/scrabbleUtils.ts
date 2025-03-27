@@ -321,7 +321,7 @@ export const isValidMove = (
   }
   
   // Skip the connection check completely for the first move
-  if (!isCenterOccupied) {
+  if (isCenterOccupied) {
     // First move only needs to cover the center square, which we've already checked
     return { valid: true, message: "Valid move", direction };
   }
