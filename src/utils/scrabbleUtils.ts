@@ -1,4 +1,3 @@
-
 import { Tile, BoardCell, Direction } from "@/types/scrabble";
 
 // Letter distribution and point values based on standard Scrabble
@@ -32,6 +31,7 @@ export const LETTER_DISTRIBUTION = {
 };
 
 // Dictionary for word validation - small sample for demo
+// This will serve as a fallback if the API fails
 export const DICTIONARY = [
   "apple", "banana", "cat", "dog", "elephant", 
   "frog", "guitar", "house", "ice", "jacket",
@@ -163,9 +163,22 @@ export const shuffleArray = <T>(array: T[]): T[] => {
   return shuffled;
 };
 
-// Validate if the word is in the dictionary
-export const isValidWord = (word: string): boolean => {
-  return DICTIONARY.includes(word.toLowerCase());
+// Validate if the word is in the dictionary using an external API
+export const isValidWord = async (word: string): Promise<boolean> => {
+  try {
+    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`);
+    if (response.status === 200) {
+      return true;
+    } else if (response.status === 404) {
+      return false;
+    } else {
+      console.warn(`Dictionary API error (status ${response.status}), falling back to local dictionary`);
+      return DICTIONARY.includes(word.toLowerCase());
+    }
+  } catch (error) {
+    console.warn('Dictionary API error, falling back to local dictionary:', error);
+    return DICTIONARY.includes(word.toLowerCase());
+  }
 };
 
 // Calculate word score with premium squares

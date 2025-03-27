@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import Board from './Board';
 import TileRack from './TileRack';
 import ScorePanel from './ScorePanel';
-import { Tile, BoardCell, BoardState, GameState, Direction } from '@/types/scrabble';
+import { Tile, BoardCell, GameState } from '@/types/scrabble';
 import { 
   createBoard, 
   createTileBag, 
@@ -192,7 +192,7 @@ const ScrabbleGame: React.FC = () => {
     toast.info('Tiles recalled to rack');
   }, [placedTiles]);
 
-  const handlePlayWord = useCallback(() => {
+  const handlePlayWord = useCallback(async () => {
     console.log("Play Word button clicked");
     if (placedTiles.length === 0) {
       toast.error('No tiles placed on the board');
@@ -219,51 +219,70 @@ const ScrabbleGame: React.FC = () => {
       return;
     }
     
-    const invalidWords = words.filter(word => !isValidWord(word));
+    const loadingToastId = toast.loading('Validating words...');
     
-    if (invalidWords.length > 0) {
-      toast.error(`Invalid word${invalidWords.length > 1 ? 's' : ''}: ${invalidWords.join(', ')}`);
-      return;
-    }
-    
-    let moveScore = 0;
-    wordObjects.forEach(({ word, tiles, cells, direction }) => {
-      moveScore += calculateWordScore(tiles, cells, direction);
-    });
-    
-    const newBoard = JSON.parse(JSON.stringify(gameState.board.cells)) as BoardCell[][];
-    placedTiles.forEach(({ row, col, tile }) => {
-      newBoard[row][col].tile = { ...tile, isPlaced: true };
-    });
-    
-    const tilesToDraw = Math.min(placedTiles.length, gameState.bag.length);
-    const { drawn, remaining } = drawTiles(gameState.bag, tilesToDraw);
-    
-    setGameState(prev => ({
-      ...prev,
-      board: { cells: newBoard },
-      rack: [...prev.rack, ...drawn],
-      bag: remaining,
-      score: prev.score + moveScore
-    }));
-    
-    setPlacedTiles([]);
-    setPotentialScore(undefined);
-    
-    if (!isCenterOccupied) {
-      setIsCenterOccupied(true);
-    }
-    
-    const wordsPlayed = words.join(', ');
-    toast.success(`Played: ${wordsPlayed} for ${moveScore} points!`);
-    
-    if (drawn.length < placedTiles.length && remaining.length === 0) {
-      if (gameState.rack.length === 0) {
-        toast.success(`Game over! Final score: ${gameState.score + moveScore}`);
-        setGameState(prev => ({ ...prev, isPlaying: false }));
-      } else {
-        toast.info('No more tiles in the bag');
+    try {
+      const wordValidations = await Promise.all(
+        words.map(async (word) => ({
+          word,
+          isValid: await isValidWord(word)
+        }))
+      );
+      
+      const invalidWords = wordValidations
+        .filter(({ isValid }) => !isValid)
+        .map(({ word }) => word);
+      
+      toast.dismiss(loadingToastId);
+      
+      if (invalidWords.length > 0) {
+        toast.error(`Invalid word${invalidWords.length > 1 ? 's' : ''}: ${invalidWords.join(', ')}`);
+        return;
       }
+      
+      let moveScore = 0;
+      wordObjects.forEach(({ word, tiles, cells, direction }) => {
+        moveScore += calculateWordScore(tiles, cells, direction);
+      });
+      
+      const newBoard = JSON.parse(JSON.stringify(gameState.board.cells)) as BoardCell[][];
+      placedTiles.forEach(({ row, col, tile }) => {
+        newBoard[row][col].tile = { ...tile, isPlaced: true };
+      });
+      
+      const tilesToDraw = Math.min(placedTiles.length, gameState.bag.length);
+      const { drawn, remaining } = drawTiles(gameState.bag, tilesToDraw);
+      
+      setGameState(prev => ({
+        ...prev,
+        board: { cells: newBoard },
+        rack: [...prev.rack, ...drawn],
+        bag: remaining,
+        score: prev.score + moveScore
+      }));
+      
+      setPlacedTiles([]);
+      setPotentialScore(undefined);
+      
+      if (!isCenterOccupied) {
+        setIsCenterOccupied(true);
+      }
+      
+      const wordsPlayed = words.join(', ');
+      toast.success(`Played: ${wordsPlayed} for ${moveScore} points!`);
+      
+      if (drawn.length < placedTiles.length && remaining.length === 0) {
+        if (gameState.rack.length === 0) {
+          toast.success(`Game over! Final score: ${gameState.score + moveScore}`);
+          setGameState(prev => ({ ...prev, isPlaying: false }));
+        } else {
+          toast.info('No more tiles in the bag');
+        }
+      }
+    } catch (error) {
+      toast.dismiss(loadingToastId);
+      toast.error('Error validating words. Please try again.');
+      console.error('Word validation error:', error);
     }
   }, [gameState, placedTiles, isCenterOccupied]);
 
