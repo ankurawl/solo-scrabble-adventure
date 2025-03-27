@@ -37,20 +37,20 @@ const Tile: React.FC<TileProps> = ({
     <div
       className={cn(
         'relative w-full h-full flex items-center justify-center',
-        'bg-scrabble-tile rounded-sm shadow-tile select-none cursor-pointer',
+        'bg-scrabble-tile border border-amber-700/30 rounded-sm shadow-tile select-none cursor-pointer',
         'transform transition-all duration-200 ease-out',
         isDragging ? 'dragging opacity-75' : 'hover:shadow-tile-hover hover:scale-102',
-        !isPlayable && tile.isPlaced && 'opacity-50 cursor-default',
+        !isPlayable && tile.isPlaced && 'opacity-90 cursor-default',
         !isPlayable && !tile.isPlaced && 'cursor-grab'
       )}
       draggable={isPlayable || !tile.isPlaced}
       onDragStart={handleDragStart}
       onClick={handleClick}
     >
-      <span className="tile-letter text-base sm:text-lg font-semibold">
+      <span className="tile-letter text-base sm:text-lg font-bold text-amber-950">
         {tile.letter}
       </span>
-      <span className="tile-points text-xs absolute bottom-0.5 right-1">
+      <span className="tile-points text-xs absolute bottom-0.5 right-1 font-medium text-amber-900">
         {tile.points}
       </span>
     </div>

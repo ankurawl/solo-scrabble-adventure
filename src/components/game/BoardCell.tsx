@@ -55,7 +55,7 @@ const BoardCell: React.FC<BoardCellProps> = ({
     }
 
     return (
-      <div className="w-full h-full flex items-center justify-center text-xs font-medium text-gray-600/70">
+      <div className="w-full h-full flex items-center justify-center text-xs font-semibold text-gray-600/80">
         {CELL_TYPE_LABELS[cell.type]}
       </div>
     );
@@ -64,9 +64,9 @@ const BoardCell: React.FC<BoardCellProps> = ({
   return (
     <div
       className={cn(
-        'relative border border-gray-200/70 w-8 h-8 sm:w-10 sm:h-10',
+        'relative border border-gray-300/80 w-8 h-8 sm:w-10 sm:h-10',
         cell.type !== 'regular' && cell.type,
-        isHighlighted && 'bg-primary/20 border-primary/40',
+        isHighlighted && 'bg-primary/30 border-primary/60',
         'transition-all duration-150 p-0.5'
       )}
       onDragOver={handleDragOver}

@@ -83,25 +83,25 @@
   @apply text-xs font-normal absolute bottom-0.5 right-1;
 }
 
-/* Special board squares styling */
+/* Special board squares styling - enhancing colors */
 .triple-word {
-  @apply bg-scrabble-triple-word/30;
+  @apply bg-scrabble-triple-word/60;
 }
 
 .double-word {
-  @apply bg-scrabble-double-word/30;
+  @apply bg-scrabble-double-word/60;
 }
 
 .triple-letter {
-  @apply bg-scrabble-triple-letter/30;
+  @apply bg-scrabble-triple-letter/60;
 }
 
 .double-letter {
-  @apply bg-scrabble-double-letter/30;
+  @apply bg-scrabble-double-letter/60;
 }
 
 .center-square {
-  @apply bg-scrabble-center/30;
+  @apply bg-scrabble-center/60;
 }
 
 /* Tile animation effects */
@@ -112,4 +112,13 @@
 /* Glass panel effect */
 .glass-panel {
   @apply backdrop-glass rounded-xl border border-white/20 shadow-glass;
+}
+
+/* Custom toast container for better stacking */
+.sonner-toast-container {
+  --gap: 12px;
+}
+
+.sonner-toast {
+  @apply shadow-lg;
 }

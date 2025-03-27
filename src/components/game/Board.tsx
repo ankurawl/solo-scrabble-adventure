@@ -44,7 +44,7 @@ const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile, p
 
   return (
     <div className="overflow-auto md:overflow-visible p-4">
-      <div className="animate-fade-in grid grid-cols-15 gap-0 p-2 bg-scrabble-board rounded-lg shadow-md">
+      <div className="animate-fade-in grid grid-cols-15 gap-0 p-2 bg-scrabble-board rounded-lg shadow-md border border-gray-300/40">
         {board.map((row, rowIndex) =>
           row.map((cell, colIndex) => (
             <div

@@ -64,9 +64,9 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				},
 				scrabble: {
-					'tile': '#f5f0e6',
+					'tile': '#f8eed0',
 					'tile-hover': '#f8f4ec',
-					'board': '#f9f9f9',
+					'board': '#fbfbfb',
 					'triple-word': '#e06666',
 					'double-word': '#f6b26b',
 					'triple-letter': '#93c47d',
@@ -119,8 +119,8 @@ export default {
 				'pulse-light': 'pulse-light 2s ease-in-out infinite'
 			},
 			boxShadow: {
-				'tile': '0 2px 4px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.08)',
-				'tile-hover': '0 4px 8px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.12)',
+				'tile': '0 2px 4px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.12)',
+				'tile-hover': '0 4px 8px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.16)',
 				'glass': '0 8px 32px rgba(0, 0, 0, 0.08)',
 				'subtle': '0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.06)'
 			},

@@ -1,10 +1,11 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import Board from './Board';
 import TileRack from './TileRack';
 import ScorePanel from './ScorePanel';
 import { Tile, BoardCell, GameState } from '@/types/scrabble';
+import { Button } from '@/components/ui/button';
+import { RefreshCcw } from 'lucide-react';
 import { 
   createBoard, 
   createTileBag, 
@@ -293,9 +294,19 @@ const ScrabbleGame: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center w-full max-w-5xl mx-auto px-4 py-8">
-      <div className="mb-8 animate-fade-in">
-        <h1 className="text-3xl sm:text-4xl font-semibold text-center mb-2">Solo Scrabble</h1>
-        <p className="text-center text-gray-500">Challenge yourself with the classic word game</p>
+      <div className="w-full mb-8 animate-fade-in flex flex-col sm:flex-row items-center justify-between">
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-semibold text-center sm:text-left mb-2">Solo Scrabble</h1>
+          <p className="text-center sm:text-left text-gray-500">Challenge yourself with the classic word game</p>
+        </div>
+        <Button
+          variant="outline"
+          onClick={startNewGame}
+          className="mt-4 sm:mt-0 flex items-center gap-2"
+        >
+          <RefreshCcw className="h-4 w-4" />
+          New Game
+        </Button>
       </div>
 
       <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
