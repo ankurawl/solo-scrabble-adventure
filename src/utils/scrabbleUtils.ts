@@ -320,36 +320,40 @@ export const isValidMove = (
     }
   }
   
-  // Skip connection check for the first move
-  if (isCenterOccupied) {
-    let connectedToExisting = false;
+  // Skip the connection check completely for the first move
+  if (!isCenterOccupied) {
+    // First move only needs to cover the center square, which we've already checked
+    return { valid: true, message: "Valid move", direction };
+  }
+  
+  // For subsequent moves, check if the new tiles connect to existing tiles
+  let connectedToExisting = false;
+  
+  for (const { row, col } of placedTiles) {
+    // Check adjacent cells
+    const adjacentCells = [
+      { row: row - 1, col },
+      { row: row + 1, col },
+      { row, col: col - 1 },
+      { row, col: col + 1 }
+    ];
     
-    for (const { row, col } of placedTiles) {
-      // Check adjacent cells
-      const adjacentCells = [
-        { row: row - 1, col },
-        { row: row + 1, col },
-        { row, col: col - 1 },
-        { row, col: col + 1 }
-      ];
-      
-      for (const { row: adjRow, col: adjCol } of adjacentCells) {
-        if (
-          adjRow >= 0 && adjRow < 15 && adjCol >= 0 && adjCol < 15 &&
-          board[adjRow][adjCol].tile &&
-          !placedTiles.some(p => p.row === adjRow && p.col === adjCol)
-        ) {
-          connectedToExisting = true;
-          break;
-        }
+    for (const { row: adjRow, col: adjCol } of adjacentCells) {
+      if (
+        adjRow >= 0 && adjRow < 15 && adjCol >= 0 && adjCol < 15 &&
+        board[adjRow][adjCol].tile &&
+        !placedTiles.some(p => p.row === adjRow && p.col === adjCol)
+      ) {
+        connectedToExisting = true;
+        break;
       }
-      
-      if (connectedToExisting) break;
     }
     
-    if (!connectedToExisting) {
-      return { valid: false, message: "New tiles must connect to existing tiles" };
-    }
+    if (connectedToExisting) break;
+  }
+  
+  if (!connectedToExisting) {
+    return { valid: false, message: "New tiles must connect to existing tiles" };
   }
   
   return { valid: true, message: "Valid move", direction };
