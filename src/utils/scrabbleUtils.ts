@@ -273,9 +273,57 @@ export const isValidMove = (
     if (!centerUsed) {
       return { valid: false, message: "First play must include center square" };
     }
+    
+    // Check if tiles are in a line
+    const sameRow = placedTiles.every(({ row }) => row === placedTiles[0].row);
+    const sameCol = placedTiles.every(({ col }) => col === placedTiles[0].col);
+    
+    if (!sameRow && !sameCol) {
+      return { valid: false, message: "Tiles must be in a straight line" };
+    }
+    
+    const direction: Direction = sameRow ? 'horizontal' : 'vertical';
+    
+    // Check if tiles are connected to each other (without gaps)
+    if (placedTiles.length > 1) {
+      const sorted = [...placedTiles].sort((a, b) => 
+        direction === 'horizontal' ? a.col - b.col : a.row - b.row
+      );
+      
+      for (let i = 1; i < sorted.length; i++) {
+        const prev = sorted[i - 1];
+        const curr = sorted[i];
+        
+        const diff = direction === 'horizontal' 
+          ? curr.col - prev.col 
+          : curr.row - prev.row;
+        
+        if (diff !== 1) {
+          // Check if there are tiles between these positions
+          let allFilled = true;
+          
+          for (let j = 1; j < diff; j++) {
+            const checkRow = direction === 'horizontal' ? prev.row : prev.row + j;
+            const checkCol = direction === 'horizontal' ? prev.col + j : prev.col;
+            
+            if (!board[checkRow][checkCol].tile) {
+              allFilled = false;
+              break;
+            }
+          }
+          
+          if (!allFilled) {
+            return { valid: false, message: "Tiles must be connected" };
+          }
+        }
+      }
+    }
+    
+    // First move doesn't need to connect to existing tiles
+    return { valid: true, message: "Valid move", direction };
   }
   
-  // Check if tiles are in a line
+  // For subsequent moves, first check if the tiles are in a line
   const sameRow = placedTiles.every(({ row }) => row === placedTiles[0].row);
   const sameCol = placedTiles.every(({ col }) => col === placedTiles[0].col);
   
@@ -285,7 +333,7 @@ export const isValidMove = (
   
   const direction: Direction = sameRow ? 'horizontal' : 'vertical';
   
-  // Check if tiles are connected
+  // Check if tiles are connected to each other (without gaps)
   if (placedTiles.length > 1) {
     const sorted = [...placedTiles].sort((a, b) => 
       direction === 'horizontal' ? a.col - b.col : a.row - b.row
@@ -318,12 +366,6 @@ export const isValidMove = (
         }
       }
     }
-  }
-  
-  // Skip the connection check completely for the first move
-  if (isCenterOccupied) {
-    // First move only needs to cover the center square, which we've already checked
-    return { valid: true, message: "Valid move", direction };
   }
   
   // For subsequent moves, check if the new tiles connect to existing tiles
