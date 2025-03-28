@@ -26,6 +26,8 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       expand={false}
       closeButton
+      offset="1.5rem"
+      gap="0.5rem"
       {...props}
     />
   )

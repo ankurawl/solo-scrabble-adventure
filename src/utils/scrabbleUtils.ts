@@ -382,15 +382,16 @@ export const isValidMove = (
   }
   
   // For subsequent moves, check if the new tiles connect to existing tiles
+  // ONLY CHECKING ORTHOGONAL ADJACENCY (not diagonals)
   let connectedToExisting = false;
   
   for (const { row, col } of placedTiles) {
-    // Check adjacent cells
+    // Check only adjacent cells in cardinal directions (not diagonals)
     const adjacentCells = [
-      { row: row - 1, col },
-      { row: row + 1, col },
-      { row, col: col - 1 },
-      { row, col: col + 1 }
+      { row: row - 1, col }, // North
+      { row: row + 1, col }, // South
+      { row, col: col - 1 }, // West
+      { row, col: col + 1 }  // East
     ];
     
     for (const { row: adjRow, col: adjCol } of adjacentCells) {
@@ -408,11 +409,7 @@ export const isValidMove = (
   }
   
   if (!connectedToExisting && isCenterOccupied) {
-    connectedToExisting = true;
-  }
-
-  if (!connectedToExisting) {
-    return { valid: false, message: "New tiles must connect to existing tiles" };
+    return { valid: false, message: "New tiles must connect to existing tiles (horizontally or vertically)" };
   }
   
   return { valid: true, message: "Valid move", direction };
