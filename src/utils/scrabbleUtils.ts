@@ -385,6 +385,7 @@ export const isValidMove = (
   // ONLY CHECKING ORTHOGONAL ADJACENCY (not diagonals)
   let connectedToExisting = false;
   
+  // First, check if any of the placed tiles are orthogonally adjacent to existing tiles
   for (const { row, col } of placedTiles) {
     // Check only adjacent cells in cardinal directions (not diagonals)
     const adjacentCells = [
@@ -397,7 +398,7 @@ export const isValidMove = (
     for (const { row: adjRow, col: adjCol } of adjacentCells) {
       if (
         adjRow >= 0 && adjRow < 15 && adjCol >= 0 && adjCol < 15 &&
-        board[adjRow][adjCol].tile &&
+        board[adjRow][adjCol].tile?.isPlaced && // Only check for permanently placed tiles
         !placedTiles.some(p => p.row === adjRow && p.col === adjCol)
       ) {
         connectedToExisting = true;
@@ -408,9 +409,13 @@ export const isValidMove = (
     if (connectedToExisting) break;
   }
   
+  // For valid subsequent moves, at least one placed tile must connect orthogonally to existing tiles
   if (!connectedToExisting && isCenterOccupied) {
     return { valid: false, message: "New tiles must connect to existing tiles (horizontally or vertically)" };
   }
+  
+  // Additionally, ensure that the placed tiles form a continuous line without gaps
+  // This is already handled by the code checking if tiles are connected to each other
   
   return { valid: true, message: "Valid move", direction };
 };
