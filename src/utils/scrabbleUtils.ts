@@ -28,6 +28,7 @@ export const LETTER_DISTRIBUTION = {
   X: { count: 1, points: 8 },
   Y: { count: 2, points: 4 },
   Z: { count: 1, points: 10 },
+  BLANK: { count: 2, points: 0 }  // Added blank tiles
 };
 
 // Dictionary for word validation - small sample for demo
@@ -130,7 +131,7 @@ export const createTileBag = (): Tile[] => {
     for (let i = 0; i < count; i++) {
       bag.push({
         id: generateId(),
-        letter,
+        letter: letter === 'BLANK' ? ' ' : letter,  // Use space for blank tiles
         points,
         isPlaced: false,
       });
@@ -166,6 +167,21 @@ export const shuffleArray = <T>(array: T[]): T[] => {
 // Validate if the word is in the dictionary using an external API
 export const isValidWord = async (word: string): Promise<boolean> => {
   try {
+    // If the word contains a blank tile (space), check all possible combinations
+    if (word.includes(' ')) {
+      // Try each letter of the alphabet in place of the blank tile
+      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      for (const letter of alphabet) {
+        const testWord = word.replace(' ', letter);
+        const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${testWord.toLowerCase()}`);
+        if (response.status === 200) {
+          return true; // If any combination is valid, the word is valid
+        }
+      }
+      return false; // No valid combinations found
+    }
+
+    // Only check normally if the word does not contain blank tiles
     const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`);
     if (response.status === 200) {
       return true;
@@ -177,6 +193,17 @@ export const isValidWord = async (word: string): Promise<boolean> => {
     }
   } catch (error) {
     console.warn('Dictionary API error, falling back to local dictionary:', error);
+    // For local dictionary fallback, also check all combinations with blank tiles
+    if (word.includes(' ')) {
+      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      for (const letter of alphabet) {
+        const testWord = word.replace(' ', letter);
+        if (DICTIONARY.includes(testWord.toLowerCase())) {
+          return true;
+        }
+      }
+      return false;
+    }
     return DICTIONARY.includes(word.toLowerCase());
   }
 };
@@ -252,6 +279,7 @@ export const getWordFromBoard = (
   ) {
     const cell = board[currentRow][currentCol];
     if (cell.tile) {
+      // Keep the space character for blank tiles to maintain word structure
       word.push(cell.tile.letter);
       tiles.push(cell.tile);
       cells.push(cell);

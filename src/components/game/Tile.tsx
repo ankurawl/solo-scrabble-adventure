@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Tile as TileType } from '@/types/scrabble';
 import { cn } from '@/lib/utils';
@@ -47,12 +46,17 @@ const Tile: React.FC<TileProps> = ({
       onDragStart={handleDragStart}
       onClick={handleClick}
     >
-      <span className="tile-letter text-base sm:text-lg font-bold text-amber-950">
-        {tile.letter}
-      </span>
-      <span className="tile-points text-xs absolute bottom-0.5 right-1 font-medium text-amber-900">
-        {tile.points}
-      </span>
+      <div className="relative flex items-center justify-center h-full">
+        <span className={cn(
+          "text-xl",
+          tile.letter === ' ' && "text-amber-700/50"
+        )}>
+          {tile.letter === ' ' ? '?' : tile.letter}
+        </span>
+        <span className="absolute bottom-0.5 left-3.5 text-xs font-normal text-amber-900">
+          {tile.points}
+        </span>
+      </div>
     </div>
   );
 };
