@@ -194,7 +194,8 @@ export const calculateWordScore = (
     let letterMultiplier = 1;
     const cell = boardCells[index];
 
-    if (cell.tile === null) { // Only apply multipliers for newly placed tiles
+    // Only apply multipliers for newly placed tiles (not permanently placed)
+    if (!cell.tile?.isPlaced) {
       switch (cell.type) {
         case 'double-letter':
           letterMultiplier = 2;

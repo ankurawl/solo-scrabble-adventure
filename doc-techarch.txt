@@ -1,0 +1,117 @@
+Technical architecture breakdown of your Scrabble application based on the files. 
+
+
+Ran tool
+Let me create a comprehensive technical architecture breakdown:
+
+# Technical Architecture: Solo Scrabble Adventure
+
+## 1. Core Game Logic (`src/utils/`)
+- `scrabbleUtils.ts`: Contains all core game mechanics
+  - Board creation and management
+  - Tile bag management
+  - Move validation
+  - Word validation
+  - Score calculation
+  - Word extraction from board
+
+## 2. Type Definitions (`src/types/`)
+- `scrabble.ts`: Defines core interfaces
+  - `Tile`: Represents a Scrabble tile with properties (id, letter, points, isPlaced)
+  - `BoardCell`: Represents a cell on the board with properties (row, col, type, tile)
+  - `GameState`: Manages overall game state (board, rack, bag, score, etc.)
+
+## 3. UI Components (`src/components/`)
+### Game Components
+- `game/ScrabbleGame.tsx`: Main game component
+  - Manages game state
+  - Handles tile placement
+  - Controls game flow
+  - Integrates all sub-components
+
+- `game/Board.tsx`: Board rendering component
+  - Renders the 15x15 game board
+  - Handles drag and drop interactions
+  - Manages cell highlighting
+
+- `game/BoardCell.tsx`: Individual cell component
+  - Renders special squares (TW, DW, TL, DL, center)
+  - Handles cell-specific styling
+  - Manages tile placement within cells
+
+- `game/Tile.tsx`: Tile component
+  - Renders individual tiles
+  - Handles drag and drop interactions
+  - Manages tile styling and animations
+
+- `game/TileRack.tsx`: Player's tile rack
+  - Displays available tiles
+  - Handles tile shuffling
+  - Manages tile selection
+
+- `game/ScorePanel.tsx`: Game information panel
+  - Shows current score
+  - Displays remaining tiles
+  - Controls for game actions (play word, recall tiles, new game)
+
+## 4. Styling
+- `tailwind.config.ts`: Tailwind CSS configuration
+  - Defines custom colors for Scrabble board
+  - Sets up responsive design breakpoints
+  - Configures custom utilities
+
+- `src/index.css` & `src/App.css`: Global styles
+  - Base styling
+  - Custom animations
+  - Responsive design rules
+
+## 5. Application Structure
+- `src/App.tsx`: Root component
+  - Application entry point
+  - Global layout management
+
+- `src/main.tsx`: Application bootstrap
+  - React initialization
+  - Global providers setup
+
+## Data Flow
+1. Game State Management:
+   - `ScrabbleGame.tsx` maintains the main game state
+   - State updates trigger re-renders of child components
+   - Game logic in `scrabbleUtils.ts` validates and processes moves
+
+2. User Interactions:
+   - Drag and drop handled by `Board.tsx` and `Tile.tsx`
+   - Move validation processed by `scrabbleUtils.ts`
+   - State updates managed by `ScrabbleGame.tsx`
+
+3. Game Rules Enforcement:
+   - Move validation in `scrabbleUtils.ts`
+   - Word validation through external API
+   - Score calculation based on board state
+
+## Key Features
+1. Board Management:
+   - Special squares (TW, DW, TL, DL)
+   - Center square requirement
+   - Connected word validation
+
+2. Game Mechanics:
+   - Tile placement validation
+   - Word formation rules
+   - Score calculation
+   - First move rules
+
+3. User Interface:
+   - Drag and drop interface
+   - Real-time move validation
+   - Score tracking
+   - Tile rack management
+
+This architecture follows a clear separation of concerns:
+- Core game logic is isolated in utils
+- UI components are modular and reusable
+- Type definitions ensure type safety
+- State management is centralized in the main game component
+
+
