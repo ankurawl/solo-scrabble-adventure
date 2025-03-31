@@ -164,35 +164,60 @@ export const shuffleArray = <T>(array: T[]): T[] => {
   return shuffled;
 };
 
+// Helper function to check word with retries
+const checkWordWithRetry = async (word: string, maxRetries: number = 3): Promise<boolean> => {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`);
+      if (response.status === 200) {
+        return true;
+      }
+      if (response.status === 404) {
+        return false;
+      }
+      // For other status codes, wait and retry
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+    } catch (error) {
+      console.warn(`API attempt ${attempt} failed:`, error);
+      if (attempt === maxRetries) {
+        return DICTIONARY.includes(word.toLowerCase());
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+    }
+  }
+  return DICTIONARY.includes(word.toLowerCase());
+};
+
 // Validate if the word is in the dictionary using an external API
 export const isValidWord = async (word: string): Promise<boolean> => {
   try {
     // If the word contains a blank tile (space), check all possible combinations
     if (word.includes(' ')) {
-      // Try each letter of the alphabet in place of the blank tile
+      // First check if any combination exists in local dictionary
       const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
       for (const letter of alphabet) {
         const testWord = word.replace(' ', letter);
-        const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${testWord.toLowerCase()}`);
-        if (response.status === 200) {
-          return true; // If any combination is valid, the word is valid
+        if (DICTIONARY.includes(testWord.toLowerCase())) {
+          return true;
         }
       }
-      return false; // No valid combinations found
+
+      // If not found in local dictionary, try API with common letters first
+      const commonLetters = 'ETAOINSHRDLCUMWFGYPBVKJXQZ'; // Most common to least common letters
+      for (const letter of commonLetters) {
+        const testWord = word.replace(' ', letter);
+        const isValid = await checkWordWithRetry(testWord);
+        if (isValid) {
+          return true;
+        }
+      }
+      return false;
     }
 
     // Only check normally if the word does not contain blank tiles
-    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`);
-    if (response.status === 200) {
-      return true;
-    } else if (response.status === 404) {
-      return false;
-    } else {
-      console.warn(`Dictionary API error (status ${response.status}), falling back to local dictionary`);
-      return DICTIONARY.includes(word.toLowerCase());
-    }
+    return await checkWordWithRetry(word);
   } catch (error) {
-    console.warn('Dictionary API error, falling back to local dictionary:', error);
+    console.warn('All API attempts failed, falling back to local dictionary:', error);
     // For local dictionary fallback, also check all combinations with blank tiles
     if (word.includes(' ')) {
       const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
