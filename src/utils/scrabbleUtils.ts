@@ -280,8 +280,11 @@ export const isValidMove = (
     return { valid: false, message: "No tiles placed" };
   }
   
+  // Check if this is the first move by looking at the board state
+  const isFirstMove = !board.some(row => row.some(cell => cell.tile?.isPlaced));
+  
   // Check if this is the first move and center is used
-  if (!isCenterOccupied) {
+  if (isFirstMove) {
     const centerUsed = placedTiles.some(({ row, col }) => row === 7 && col === 7);
     if (!centerUsed) {
       return { valid: false, message: "First play must include center square" };
@@ -396,7 +399,7 @@ export const isValidMove = (
     for (const { row: adjRow, col: adjCol } of adjacentCells) {
       if (
         adjRow >= 0 && adjRow < 15 && adjCol >= 0 && adjCol < 15 &&
-        board[adjRow][adjCol].tile &&
+        board[adjRow][adjCol].tile?.isPlaced &&
         !placedTiles.some(p => p.row === adjRow && p.col === adjCol)
       ) {
         connectedToExisting = true;
@@ -405,10 +408,6 @@ export const isValidMove = (
     }
 
     if (connectedToExisting) break;
-  }
-  
-  if (!connectedToExisting && isCenterOccupied) {
-    connectedToExisting = true;
   }
 
   if (!connectedToExisting) {
