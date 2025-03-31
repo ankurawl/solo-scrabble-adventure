@@ -61,6 +61,14 @@ const ScorePanel: React.FC<ScorePanelProps> = ({
           <RotateCcw className="h-4 w-4" />
           Recall Tiles
         </Button>
+        <Button
+          variant="ghost"
+          onClick={onNewGame}
+          className="flex items-center gap-2"
+        >
+          <RefreshCcw className="h-4 w-4" />
+          New Game
+        </Button>
       </div>
     </div>
   );
