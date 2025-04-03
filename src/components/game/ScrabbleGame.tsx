@@ -223,10 +223,10 @@ const ScrabbleGame: React.FC = () => {
     
     try {
       const wordValidations = await Promise.all(
-        words.map(async (word) => ({
-          word,
-          isValid: await isValidWord(word)
-        }))
+        words.map(async (word) => {
+          const validation = await isValidWord(word);
+          return { word, isValid: validation.isValid, actualWord: validation.actualWord };
+        })
       );
       
       const invalidWords = wordValidations
@@ -241,6 +241,7 @@ const ScrabbleGame: React.FC = () => {
       }
       
       let moveScore = 0;
+      const actualWordsPlayed = wordValidations.map(({ actualWord }) => actualWord);
       wordObjects.forEach(({ word, tiles, cells, direction }) => {
         moveScore += calculateWordScore(tiles, cells, direction);
       });
@@ -268,7 +269,7 @@ const ScrabbleGame: React.FC = () => {
         setIsCenterOccupied(true);
       }
       
-      const wordsPlayed = words.join(', ');
+      const wordsPlayed = actualWordsPlayed.join(', ');
       toast.success(`Played: ${wordsPlayed} for ${moveScore} points!`);
       
       if (drawn.length < placedTiles.length && remaining.length === 0) {

@@ -51,7 +51,7 @@ const Tile: React.FC<TileProps> = ({
           "text-xl",
           tile.letter === ' ' && "text-amber-700/50"
         )}>
-          {tile.letter === ' ' ? '?' : tile.letter}
+          {tile.letter === ' ' ? '' : tile.letter} {/* Display blank as empty */}
         </span>
         <span className="absolute bottom-0.5 left-3.5 text-xs font-normal text-amber-900">
           {tile.points}

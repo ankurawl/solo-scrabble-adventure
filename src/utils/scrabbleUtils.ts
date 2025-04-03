@@ -189,47 +189,43 @@ const checkWordWithRetry = async (word: string, maxRetries: number = 3): Promise
 };
 
 // Validate if the word is in the dictionary using an external API
-export const isValidWord = async (word: string): Promise<boolean> => {
+export const isValidWord = async (word: string): Promise<{ isValid: boolean; actualWord: string }> => {
   try {
-    // If the word contains a blank tile (space), check all possible combinations
     if (word.includes(' ')) {
-      // First check if any combination exists in local dictionary
       const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
       for (const letter of alphabet) {
         const testWord = word.replace(' ', letter);
         if (DICTIONARY.includes(testWord.toLowerCase())) {
-          return true;
+          return { isValid: true, actualWord: testWord };
         }
       }
 
-      // If not found in local dictionary, try API with common letters first
-      const commonLetters = 'ETAOINSHRDLCUMWFGYPBVKJXQZ'; // Most common to least common letters
+      const commonLetters = 'ETAOINSHRDLCUMWFGYPBVKJXQZ';
       for (const letter of commonLetters) {
         const testWord = word.replace(' ', letter);
         const isValid = await checkWordWithRetry(testWord);
         if (isValid) {
-          return true;
+          return { isValid: true, actualWord: testWord };
         }
       }
-      return false;
+      return { isValid: false, actualWord: word };
     }
 
-    // Only check normally if the word does not contain blank tiles
-    return await checkWordWithRetry(word);
+    const isValid = await checkWordWithRetry(word);
+    return { isValid, actualWord: word };
   } catch (error) {
     console.warn('All API attempts failed, falling back to local dictionary:', error);
-    // For local dictionary fallback, also check all combinations with blank tiles
     if (word.includes(' ')) {
       const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
       for (const letter of alphabet) {
         const testWord = word.replace(' ', letter);
         if (DICTIONARY.includes(testWord.toLowerCase())) {
-          return true;
+          return { isValid: true, actualWord: testWord };
         }
       }
-      return false;
+      return { isValid: false, actualWord: word };
     }
-    return DICTIONARY.includes(word.toLowerCase());
+    return { isValid: DICTIONARY.includes(word.toLowerCase()), actualWord: word };
   }
 };
 

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { BoardCell as BoardCellType, Tile as TileType } from '@/types/scrabble';
 import BoardCell from './BoardCell';
@@ -43,8 +42,8 @@ const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile, p
   const highlightedCells = draggedOverCell ? [draggedOverCell] : [];
 
   return (
-    <div className="overflow-auto md:overflow-visible p-4">
-      <div className="animate-fade-in grid grid-cols-15 gap-0 p-2 bg-scrabble-board rounded-lg shadow-md border border-gray-300/40">
+    <div className="board-container">
+      <div className="board-grid bg-scrabble-board rounded-lg shadow-md border border-gray-300/40">
         {board.map((row, rowIndex) =>
           row.map((cell, colIndex) => (
             <div
