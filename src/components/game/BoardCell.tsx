@@ -1,8 +1,8 @@
-
-import React from 'react';
+import React, { useRef } from 'react';
 import { BoardCell as BoardCellType, Tile as TileType } from '@/types/scrabble';
 import Tile from './Tile';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BoardCellProps {
   cell: BoardCellType;
@@ -10,6 +10,7 @@ interface BoardCellProps {
   onDragOver: (e: React.DragEvent) => void;
   highlightedCells?: { row: number; col: number }[];
   placedTile?: TileType | null;
+  isMobile?: boolean;
 }
 
 const CELL_TYPE_LABELS: Record<string, string> = {
@@ -22,12 +23,15 @@ const CELL_TYPE_LABELS: Record<string, string> = {
 };
 
 const BoardCell: React.FC<BoardCellProps> = ({
+  isMobile = useIsMobile(),
   cell,
   onDrop,
   onDragOver,
   highlightedCells = [],
   placedTile,
 }) => {
+  const cellRef = useRef<HTMLDivElement>(null);
+  
   const isHighlighted = highlightedCells.some(
     (highlightedCell) => highlightedCell.row === cell.row && highlightedCell.col === cell.col
   );
@@ -40,6 +44,16 @@ const BoardCell: React.FC<BoardCellProps> = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     onDrop(cell.row, cell.col);
+  };
+  
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    // Check if there's a dragged tile over this cell
+    const draggedTiles = document.querySelectorAll('.dragging');
+    if (draggedTiles.length > 0) {
+      // Simulate a drop event
+      const dropEvent = new Event('drop', { bubbles: true }) as unknown as React.DragEvent;
+      handleDrop(dropEvent);
+    }
   };
 
   const renderCellContent = () => {
@@ -63,14 +77,19 @@ const BoardCell: React.FC<BoardCellProps> = ({
 
   return (
     <div
+      ref={cellRef}
       className={cn(
-        'relative border border-gray-300/80 w-8 h-8 sm:w-10 sm:h-10',
+        'relative border border-gray-300/80',
+        'w-full h-full', // Use full width/height of grid cell
+        'board-cell', // Add class for ensuring square shape
         cell.type !== 'regular' && cell.type,
         isHighlighted && 'bg-primary/30 border-primary/60',
-        'transition-all duration-150 p-0.5'
+        'transition-all duration-150',
+        'p-[1px] sm:p-[2px]' // Consistent padding based on screen size
       )}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
+      onTouchEnd={handleTouchEnd}
     >
       {renderCellContent()}
     </div>

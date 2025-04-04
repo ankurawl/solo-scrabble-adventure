@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { BoardCell as BoardCellType, Tile as TileType } from '@/types/scrabble';
 import BoardCell from './BoardCell';
+import { useBoardGestures } from '@/hooks/use-board-gestures';
+import { Button } from '@/components/ui/button';
+import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BoardProps {
   board: BoardCellType[][];
@@ -11,6 +15,12 @@ interface BoardProps {
 
 const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile, placedTiles }) => {
   const [draggedOverCell, setDraggedOverCell] = useState<{ row: number; col: number } | null>(null);
+  const isMobile = useIsMobile();
+  const { containerRef, scale, position, resetZoom, setScale, isDragging } = useBoardGestures({
+    minScale: 0.5,
+    maxScale: 3,
+    initialScale: 1,
+  });
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -40,10 +50,30 @@ const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile, p
   };
 
   const highlightedCells = draggedOverCell ? [draggedOverCell] : [];
+  
+  const handleZoomIn = () => {
+    setScale(Math.min(scale + 0.25, 3));
+  };
+  
+  const handleZoomOut = () => {
+    setScale(Math.max(scale - 0.25, 0.5));
+  };
 
   return (
-    <div className="board-container">
-      <div className="board-grid bg-scrabble-board rounded-lg shadow-md border border-gray-300/40">
+    <div className="flex flex-col items-center">
+      <div className="board-container relative" ref={containerRef}>
+        <div
+          className="board-grid bg-scrabble-board rounded-lg shadow-md border border-gray-300/40 transform-gpu"
+          style={{
+            transform: `scale(${scale}) translate(${position.x}px, ${position.y}px)`,
+            transformOrigin: 'center',
+            transition: 'transform 0.1s ease-out',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(15, 1fr)',
+            gridTemplateRows: 'repeat(15, 1fr)',
+            aspectRatio: '1 / 1'
+          }}
+        >
         {board.map((row, rowIndex) =>
           row.map((cell, colIndex) => (
             <div
@@ -61,6 +91,23 @@ const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile, p
             </div>
           ))
         )}
+        </div>
+      </div>
+      
+      {/* Zoom controls below the board */}
+      <div className="flex gap-2 mt-2 justify-center">
+        <Button variant="outline" size="sm" className="h-8" onClick={handleZoomOut}>
+          <ZoomOut className="h-4 w-4 mr-1" />
+          <span className="text-xs">Zoom Out</span>
+        </Button>
+        <Button variant="outline" size="sm" className="h-8" onClick={resetZoom}>
+          <Maximize className="h-4 w-4 mr-1" />
+          <span className="text-xs">Fit</span>
+        </Button>
+        <Button variant="outline" size="sm" className="h-8" onClick={handleZoomIn}>
+          <ZoomIn className="h-4 w-4 mr-1" />
+          <span className="text-xs">Zoom In</span>
+        </Button>
       </div>
     </div>
   );

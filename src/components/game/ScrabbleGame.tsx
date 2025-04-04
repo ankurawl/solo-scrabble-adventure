@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import Board from './Board';
 import TileRack from './TileRack';
-import ScorePanel from './ScorePanel';
+import { Button } from '@/components/ui/button';
+import { RefreshCcw } from 'lucide-react';
 import { Tile, BoardCell, GameState } from '@/types/scrabble';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   createBoard, 
   createTileBag, 
@@ -16,6 +18,7 @@ import {
 } from '@/utils/scrabbleUtils';
 
 const ScrabbleGame: React.FC = () => {
+  const isMobile = useIsMobile();
   const [gameState, setGameState] = useState<GameState>({
     board: { cells: createBoard() },
     rack: [],
@@ -288,37 +291,59 @@ const ScrabbleGame: React.FC = () => {
   }, [gameState, placedTiles, isCenterOccupied]);
 
   return (
-    <div className="flex flex-col items-center w-full max-w-5xl mx-auto px-4 py-8">
-      <div className="mb-8 animate-fade-in">
-        <h1 className="text-3xl sm:text-4xl font-semibold text-center mb-2">Solo Scrabble</h1>
-        <p className="text-center text-gray-500">Challenge yourself with the classic word game</p>
+    <div className="flex flex-col items-center w-full mx-auto px-2 sm:px-4 py-2 sm:py-4 max-w-[600px]">
+      <div className="w-full mb-1 sm:mb-2 animate-fade-in">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center">Solo Scrabble</h1>
       </div>
 
-      <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 order-2 lg:order-1">
-          <Board 
-            board={gameState.board.cells} 
-            onPlaceTile={handlePlaceTile} 
-            currentDraggedTile={currentDraggedTile}
-            placedTiles={placedTiles}
-          />
+      {/* Consistent layout across all screen sizes */}
+      <div className="w-full flex flex-col h-[calc(100vh-8rem)]">
+        {/* Fixed header with score - inline without panel */}
+        <div className="sticky top-0 z-10 w-full flex justify-between items-center py-1 px-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-gray-500">Score:</span>
+            <span className="text-xl sm:text-2xl font-semibold">
+              {gameState.score}
+              {potentialScore !== undefined && potentialScore > 0 && (
+                <span className="text-xs sm:text-sm text-green-600 ml-1">+{potentialScore}</span>
+              )}
+            </span>
+          </div>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={startNewGame}
+            className="flex items-center gap-1 p-1"
+            title="New Game"
+          >
+            <RefreshCcw className="h-4 w-4" />
+            <span className="text-xs">New Game</span>
+          </Button>
         </div>
         
-        <div className="order-1 lg:order-2 space-y-6">
-          <ScorePanel 
-            score={gameState.score}
+        {/* Scrollable board area */}
+        <div className="flex-grow overflow-hidden my-2 sm:my-4">
+          <div className="board-wrapper mx-auto">
+            <Board
+              board={gameState.board.cells}
+              onPlaceTile={handlePlaceTile}
+              currentDraggedTile={currentDraggedTile}
+              placedTiles={placedTiles}
+            />
+          </div>
+        </div>
+        
+        {/* Fixed footer with tiles */}
+        <div className="sticky bottom-0 z-10 w-full">
+          <TileRack
+            tiles={gameState.rack}
             tilesRemaining={gameState.bag.length}
-            onPlayWord={handlePlayWord}
-            onRecallTiles={handleRecallTiles}
-            onNewGame={startNewGame}
-            canPlay={placedTiles.length > 0}
-            wordScore={potentialScore}
-          />
-          
-          <TileRack 
-            tiles={gameState.rack} 
             onTileDragStart={handleTileDragStart}
             onShuffleTiles={handleShuffleTiles}
+            onPlayWord={handlePlayWord}
+            onRecallTiles={handleRecallTiles}
+            canPlay={placedTiles.length > 0}
+            wordScore={potentialScore}
           />
         </div>
       </div>
