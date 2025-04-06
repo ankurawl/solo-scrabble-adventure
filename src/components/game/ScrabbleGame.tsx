@@ -343,7 +343,6 @@ const ScrabbleGame: React.FC = () => {
             onPlayWord={handlePlayWord}
             onRecallTiles={handleRecallTiles}
             canPlay={placedTiles.length > 0}
-            wordScore={potentialScore}
           />
         </div>
       </div>
