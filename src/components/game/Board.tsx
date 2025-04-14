@@ -11,9 +11,10 @@ interface BoardProps {
   onPlaceTile: (row: number, col: number, tileId: string) => void;
   currentDraggedTile: TileType | null;
   placedTiles: { row: number; col: number; tile: TileType }[];
+  onTileDragStart: (e: React.DragEvent, tile: TileType) => void;
 }
 
-const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile, placedTiles }) => {
+const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile, placedTiles, onTileDragStart }) => {
   const [draggedOverCell, setDraggedOverCell] = useState<{ row: number; col: number } | null>(null);
   const isMobile = useIsMobile();
   const { containerRef, scale, position, resetZoom, setScale, isDragging } = useBoardGestures({
@@ -28,12 +29,9 @@ const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile, p
   };
 
   const handleDrop = (row: number, col: number) => {
-    // Directly get the tile ID from the dataTransfer object or use currentDraggedTile
-    const tileId = currentDraggedTile?.id || '';
-    
-    if (tileId) {
-      // Call onPlaceTile with the row, col, and tile ID
-      onPlaceTile(row, col, tileId);
+    // Directly call onPlaceTile with the row, col, and tile ID from currentDraggedTile
+    if (currentDraggedTile) {
+      onPlaceTile(row, col, currentDraggedTile.id);
     }
     
     // Reset the dragged over cell
@@ -107,6 +105,7 @@ const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile, p
                 highlightedCells={highlightedCells}
                 placedTile={getPlacedTileForCell(rowIndex, colIndex)}
                 isCurrentTurnPlacement={isCurrentTurnPlacement(rowIndex, colIndex)}
+                onTileDragStart={onTileDragStart}
               />
             </div>
           ))

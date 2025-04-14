@@ -12,6 +12,7 @@ interface BoardCellProps {
   placedTile?: TileType | null;
   isMobile?: boolean;
   isCurrentTurnPlacement?: boolean;
+  onTileDragStart?: (e: React.DragEvent, tile: TileType) => void;
 }
 
 const CELL_TYPE_LABELS: Record<string, string> = {
@@ -31,6 +32,7 @@ const BoardCell: React.FC<BoardCellProps> = ({
   highlightedCells = [],
   placedTile,
   isCurrentTurnPlacement = false,
+  onTileDragStart,
 }) => {
   const cellRef = useRef<HTMLDivElement>(null);
   
@@ -57,18 +59,12 @@ const BoardCell: React.FC<BoardCellProps> = ({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     
-    // Get the tile ID from the dataTransfer
-    const tileId = e.dataTransfer.getData('text/plain');
-    if (!tileId) return;
+    // Always handle the drop regardless of tileId
+    // The parent component's onDrop will do the necessary validation
+    onDrop(cell.row, cell.col);
     
-    // Only handle the drop if the cell can accept it
-    if (canAcceptDrop()) {
-      // Pass the row and col to the parent component's onDrop handler
-      onDrop(cell.row, cell.col);
-      
-      // Stop event propagation to prevent multiple drops
-      e.stopPropagation();
-    }
+    // Stop event propagation to prevent multiple drops
+    e.stopPropagation();
   };
   
   const handleTouchEnd = (e: React.TouchEvent) => {
@@ -91,7 +87,8 @@ const BoardCell: React.FC<BoardCellProps> = ({
           <Tile 
             tile={tileToShow} 
             isPlayable={!cell.tile?.isPlaced} 
-            isCurrentTurnPlacement={isCurrentTurnPlacement} 
+            isCurrentTurnPlacement={isCurrentTurnPlacement}
+            onDragStart={onTileDragStart}
           />
         </div>
       );

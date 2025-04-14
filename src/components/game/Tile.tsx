@@ -38,13 +38,28 @@ const Tile: React.FC<TileProps> = ({
       e.preventDefault();
       return;
     }
+
+    console.log('Drag started for tile:', tile.id, tile.letter);
     
     // Set the drag data with the tile ID
     e.dataTransfer.setData('text/plain', tile.id);
     e.dataTransfer.effectAllowed = 'move';
     
+    // Add a class to visually indicate dragging
+    if (tileRef.current) {
+      tileRef.current.classList.add('dragging');
+    }
+    
     if (onDragStart) {
       onDragStart(e, tile);
+    }
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    console.log('Drag ended for tile:', tile.id, tile.letter);
+    
+    if (tileRef.current) {
+      tileRef.current.classList.remove('dragging');
     }
   };
 
@@ -142,6 +157,7 @@ const Tile: React.FC<TileProps> = ({
       )}
       draggable={isDraggable}
       onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

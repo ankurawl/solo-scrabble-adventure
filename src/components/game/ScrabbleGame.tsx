@@ -100,30 +100,22 @@ const ScrabbleGame: React.FC = () => {
   }, []);
 
   const handlePlaceTile = useCallback((row: number, col: number, tileId: string) => {
-    if (!gameState.isPlaying) return;
+    console.log('handlePlaceTile called with:', { row, col, tileId });
     
-    // Get information about the target cell
+    if (!gameState.isPlaying || !tileId) {
+      console.log('Game not playing or no tileId provided');
+      return;
+    }
+    
+    // Get information about the target cell from the board
     const boardCell = gameState.board.cells[row][col];
     
-    // Check if the target cell has a previously placed tile (from previous turns)
+    // Check if the target cell has a permanently placed tile (from previous turns)
     if (boardCell.tile && boardCell.tile.isPlaced) {
-      toast.error('Cannot move tiles from previous turns');
+      console.log('Cannot place on permanently placed tile');
+      toast.error('Cannot place on top of tiles from previous turns');
       return;
     }
-    
-    // If we don't have the tileId but have currentDraggedTile, use that
-    if (!tileId && currentDraggedTile) {
-      tileId = currentDraggedTile.id;
-    }
-    
-    if (!tileId) {
-      return;
-    }
-    
-    // Check if there's already a tile in this cell from the current turn
-    const existingPlacedTileIndex = placedTiles.findIndex(
-      pt => pt.row === row && pt.col === col
-    );
     
     // Find the tile being dragged - either from rack or from the board
     let tileToPlace: Tile | undefined;
@@ -133,12 +125,14 @@ const ScrabbleGame: React.FC = () => {
     // Check if dragging from rack
     const rackTileIndex = gameState.rack.findIndex(t => t.id === tileId);
     if (rackTileIndex !== -1) {
+      console.log('Tile is from rack');
       tileToPlace = { ...gameState.rack[rackTileIndex] };
       isFromRack = true;
     } else {
       // Check if dragging a tile already on the board (placed in current turn)
       const placedTileIndex = placedTiles.findIndex(pt => pt.tile.id === tileId);
       if (placedTileIndex !== -1) {
+        console.log('Tile is from board (current turn)');
         tileToPlace = { ...placedTiles[placedTileIndex].tile };
         existingTilePosition = {
           row: placedTiles[placedTileIndex].row,
@@ -148,79 +142,100 @@ const ScrabbleGame: React.FC = () => {
     }
     
     if (!tileToPlace) {
+      console.error('Could not find the tile to place with id:', tileId);
       return;
     }
     
-    // Don't allow dropping a tile onto itself
+    // Don't allow dropping a tile onto itself (same position)
     if (existingTilePosition && existingTilePosition.row === row && existingTilePosition.col === col) {
+      console.log('Dropped tile onto itself, ignoring');
       return;
     }
     
-    // Create a deep copy of the placed tiles to work with
-    const newPlacedTiles = [...placedTiles];
+    console.log('Tile found:', { 
+      tileId: tileToPlace.id,
+      letter: tileToPlace.letter,
+      isFromRack,
+      existingPosition: existingTilePosition 
+    });
     
-    // CASE 1: Target cell already has a tile from current turn (swap)
+    // Check if the target cell already has a tile from the current turn
+    const existingPlacedTileIndex = placedTiles.findIndex(pt => pt.row === row && pt.col === col);
+    
+    // Create a new array for placed tiles (to avoid direct state mutation)
+    let newPlacedTiles = [...placedTiles];
+    
+    // CASE 1: Target cell already has a tile from current turn (swap/replace)
     if (existingPlacedTileIndex !== -1) {
+      console.log('Target cell already has a tile from current turn');
       const existingTile = { ...placedTiles[existingPlacedTileIndex].tile };
       
-      // CASE 1A: Dragging from another cell on the board to an occupied cell (swap)
+      // CASE 1A: Moving from another board position to an occupied cell (swap)
       if (existingTilePosition) {
-        // Remove both tiles and add them in swapped positions in a single update
-        const filteredTiles = newPlacedTiles.filter(pt => 
-          pt.tile.id !== tileId && !(pt.row === row && pt.col === col)
+        console.log('Swapping tiles between board positions');
+        // Remove both tiles from their current positions
+        newPlacedTiles = newPlacedTiles.filter(pt => 
+          !(pt.tile.id === tileId || (pt.row === row && pt.col === col))
         );
         
         // Add both tiles in their new positions
-        filteredTiles.push({ row, col, tile: tileToPlace });
-        filteredTiles.push({ 
+        newPlacedTiles.push({ 
+          row, 
+          col, 
+          tile: tileToPlace 
+        });
+        
+        newPlacedTiles.push({ 
           row: existingTilePosition.row, 
           col: existingTilePosition.col, 
           tile: existingTile 
         });
-        
-        // Update state in a single operation
-        setPlacedTiles(filteredTiles);
       } 
-      // CASE 1B: Dragging from rack to an occupied cell
-      else {
-        // Add tile from rack to board and return existing tile to rack
+      // CASE 1B: Moving from rack to an occupied cell (replace and return to rack)
+      else if (isFromRack) {
+        console.log('Replacing board tile with rack tile');
+        // Remove the existing tile from the board
+        newPlacedTiles = newPlacedTiles.filter(pt => !(pt.row === row && pt.col === col));
+        
+        // Add the new tile to the board
+        newPlacedTiles.push({ row, col, tile: tileToPlace });
+        
+        // Return the replaced tile to the rack
         setGameState(prev => ({
           ...prev,
           rack: [...prev.rack.filter(t => t.id !== tileId), existingTile]
         }));
-        
-        const filteredTiles = newPlacedTiles.filter(pt => 
-          !(pt.row === row && pt.col === col)
-        );
-        filteredTiles.push({ row, col, tile: tileToPlace });
-        
-        setPlacedTiles(filteredTiles);
       }
     }
     // CASE 2: Target cell is empty
     else {
-      // CASE 2A: Moving a tile from one board position to another empty cell
+      // CASE 2A: Moving a tile from one board position to an empty cell
       if (existingTilePosition) {
-        // Simply update the tile's position in a single operation
-        const filteredTiles = newPlacedTiles.filter(pt => pt.tile.id !== tileId);
-        filteredTiles.push({ row, col, tile: tileToPlace });
+        console.log('Moving tile from board to empty cell');
+        // Remove the tile from its current position
+        newPlacedTiles = newPlacedTiles.filter(pt => pt.tile.id !== tileId);
         
-        setPlacedTiles(filteredTiles);
+        // Add the tile to the new position
+        newPlacedTiles.push({ row, col, tile: tileToPlace });
       } 
       // CASE 2B: Moving a tile from rack to an empty cell
-      else {
+      else if (isFromRack) {
+        console.log('Moving tile from rack to empty cell');
         // Add the tile to the board
-        setPlacedTiles([...newPlacedTiles, { row, col, tile: tileToPlace }]);
+        newPlacedTiles.push({ row, col, tile: tileToPlace });
         
         // Remove the tile from the rack
-        if (isFromRack) {
-          setGameState(prev => ({
-            ...prev,
-            rack: prev.rack.filter(t => t.id !== tileId)
-          }));
-        }
+        setGameState(prev => ({
+          ...prev,
+          rack: prev.rack.filter(t => t.id !== tileId)
+        }));
       }
     }
+    
+    console.log('New placed tiles:', newPlacedTiles.map(pt => `${pt.tile.letter}@(${pt.row},${pt.col})`));
+    
+    // Update the placed tiles
+    setPlacedTiles(newPlacedTiles);
     
     // Check if center is occupied (important for first move)
     if (row === 7 && col === 7) {
@@ -238,6 +253,8 @@ const ScrabbleGame: React.FC = () => {
     
     // Set the current dragged tile
     setCurrentDraggedTile(tile);
+    
+    console.log('Tile drag started:', tile.id); // Add logging for debugging
   }, []);
 
   const handleShuffleTiles = useCallback(() => {
@@ -438,6 +455,7 @@ const ScrabbleGame: React.FC = () => {
               onPlaceTile={handlePlaceTile}
               currentDraggedTile={currentDraggedTile}
               placedTiles={placedTiles}
+              onTileDragStart={handleTileDragStart}
             />
           </div>
         </div>
