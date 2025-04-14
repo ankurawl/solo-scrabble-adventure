@@ -417,7 +417,7 @@ const ScrabbleGame: React.FC = () => {
   }, [placedTiles]);
 
   return (
-    <div className="flex flex-col items-center w-full mx-auto px-2 sm:px-4 py-2 sm:py-4 max-w-[600px]">
+    <div className="flex flex-col items-center w-full mx-auto px-2 sm:px-4 py-2 sm:py-4 max-w-[600px] touch-none">
       <div className="w-full mb-1 sm:mb-2 animate-fade-in">
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center">Solo Scrabble</h1>
       </div>
@@ -448,8 +448,8 @@ const ScrabbleGame: React.FC = () => {
         </div>
         
         {/* Scrollable board area */}
-        <div className="flex-grow overflow-hidden my-2 sm:my-4">
-          <div className="board-wrapper mx-auto">
+        <div className="flex-grow overflow-hidden my-2 sm:my-4 touch-none">
+          <div className="board-wrapper mx-auto touch-none">
             <Board
               board={gameState.board.cells}
               onPlaceTile={handlePlaceTile}

@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { BoardCell as BoardCellType, Tile as TileType } from '@/types/scrabble';
 import BoardCell from './BoardCell';
-import { useBoardGestures } from '@/hooks/use-board-gestures';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
 interface BoardProps {
   board: BoardCellType[][];
@@ -17,11 +17,6 @@ interface BoardProps {
 const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile, placedTiles, onTileDragStart }) => {
   const [draggedOverCell, setDraggedOverCell] = useState<{ row: number; col: number } | null>(null);
   const isMobile = useIsMobile();
-  const { containerRef, scale, position, resetZoom, setScale, isDragging } = useBoardGestures({
-    minScale: 0.5,
-    maxScale: 3,
-    initialScale: 1,
-  });
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -67,67 +62,86 @@ const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile, p
   };
 
   const highlightedCells = draggedOverCell ? [draggedOverCell] : [];
-  
-  const handleZoomIn = () => {
-    setScale(Math.min(scale + 0.25, 3));
-  };
-  
-  const handleZoomOut = () => {
-    setScale(Math.max(scale - 0.25, 0.5));
-  };
 
   return (
     <div className="flex flex-col items-center">
-      <div className="board-container relative" ref={containerRef}>
-        <div
-          className="board-grid bg-scrabble-board rounded-lg shadow-md border border-gray-300/40 transform-gpu"
-          style={{
-            transform: `scale(${scale}) translate(${position.x}px, ${position.y}px)`,
-            transformOrigin: 'center',
-            transition: 'transform 0.1s ease-out',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(15, 1fr)',
-            gridTemplateRows: 'repeat(15, 1fr)',
-            aspectRatio: '1 / 1'
-          }}
-        >
-        {board.map((row, rowIndex) =>
-          row.map((cell, colIndex) => (
-            <div
-              key={`${rowIndex}-${colIndex}`}
-              data-row={rowIndex}
-              data-col={colIndex}
-            >
-              <BoardCell
-                cell={cell}
-                onDrop={() => handleDrop(rowIndex, colIndex)}
-                onDragOver={handleCellDragOver}
-                highlightedCells={highlightedCells}
-                placedTile={getPlacedTileForCell(rowIndex, colIndex)}
-                isCurrentTurnPlacement={isCurrentTurnPlacement(rowIndex, colIndex)}
-                onTileDragStart={onTileDragStart}
-              />
+      <TransformWrapper
+        initialScale={1}
+        minScale={0.5}
+        maxScale={3}
+        centerOnInit={true}
+        panning={{ disabled: false, velocityDisabled: true }}
+        pinch={{ disabled: false }}
+        doubleClick={{ disabled: true }}
+        wheel={{ disabled: !isMobile, step: 0.1 }}
+        zoomAnimation={{ disabled: true }}
+        alignmentAnimation={{ disabled: true }}
+        onPanningStart={(_, event) => {
+          // Check if we're touching a tile - if so, don't start panning
+          const target = event.target as HTMLElement;
+          if (target.closest('.tile-draggable')) {
+            return false; // Prevent panning
+          }
+          return true; // Allow panning
+        }}
+      >
+        {({ zoomIn, zoomOut, resetTransform }) => (
+          <>
+            <div className="board-container relative overflow-hidden touch-none">
+              <TransformComponent
+                wrapperStyle={{ width: '100%', height: '100%' }}
+                contentStyle={{ width: '100%', height: '100%' }}
+              >
+                <div
+                  className="board-grid bg-scrabble-board rounded-lg shadow-md border border-gray-300/40"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(15, 1fr)',
+                    gridTemplateRows: 'repeat(15, 1fr)',
+                    aspectRatio: '1 / 1'
+                  }}
+                >
+                  {board.map((row, rowIndex) =>
+                    row.map((cell, colIndex) => (
+                      <div
+                        key={`${rowIndex}-${colIndex}`}
+                        data-row={rowIndex}
+                        data-col={colIndex}
+                      >
+                        <BoardCell
+                          cell={cell}
+                          onDrop={() => handleDrop(rowIndex, colIndex)}
+                          onDragOver={handleCellDragOver}
+                          highlightedCells={highlightedCells}
+                          placedTile={getPlacedTileForCell(rowIndex, colIndex)}
+                          isCurrentTurnPlacement={isCurrentTurnPlacement(rowIndex, colIndex)}
+                          onTileDragStart={onTileDragStart}
+                        />
+                      </div>
+                    ))
+                  )}
+                </div>
+              </TransformComponent>
             </div>
-          ))
+            
+            {/* Zoom controls below the board */}
+            <div className="flex gap-2 mt-2 justify-center">
+              <Button variant="outline" size="sm" className="h-8" onClick={() => zoomOut()}>
+                <ZoomOut className="h-4 w-4 mr-1" />
+                <span className="text-xs">Zoom Out</span>
+              </Button>
+              <Button variant="outline" size="sm" className="h-8" onClick={() => resetTransform()}>
+                <Maximize className="h-4 w-4 mr-1" />
+                <span className="text-xs">Fit</span>
+              </Button>
+              <Button variant="outline" size="sm" className="h-8" onClick={() => zoomIn()}>
+                <ZoomIn className="h-4 w-4 mr-1" />
+                <span className="text-xs">Zoom In</span>
+              </Button>
+            </div>
+          </>
         )}
-        </div>
-      </div>
-      
-      {/* Zoom controls below the board */}
-      <div className="flex gap-2 mt-2 justify-center">
-        <Button variant="outline" size="sm" className="h-8" onClick={handleZoomOut}>
-          <ZoomOut className="h-4 w-4 mr-1" />
-          <span className="text-xs">Zoom Out</span>
-        </Button>
-        <Button variant="outline" size="sm" className="h-8" onClick={resetZoom}>
-          <Maximize className="h-4 w-4 mr-1" />
-          <span className="text-xs">Fit</span>
-        </Button>
-        <Button variant="outline" size="sm" className="h-8" onClick={handleZoomIn}>
-          <ZoomIn className="h-4 w-4 mr-1" />
-          <span className="text-xs">Zoom In</span>
-        </Button>
-      </div>
+      </TransformWrapper>
     </div>
   );
 };

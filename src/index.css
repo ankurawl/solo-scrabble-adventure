@@ -53,6 +53,26 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    overscroll-behavior: none; /* Prevent overscroll bounce */
+  }
+  
+  /* Prevent scrolling on iPad when playing the game */
+  @media (pointer: coarse) {
+    html, body {
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      touch-action: manipulation;
+      -webkit-overflow-scrolling: none;
+    }
+    
+    #root {
+      width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
   }
 }
 
@@ -71,6 +91,10 @@
   
   .grid-cols-15 {
     grid-template-columns: repeat(15, minmax(0, 1fr));
+  }
+  
+  .touch-action-none {
+    touch-action: none !important;
   }
 }
 
@@ -106,6 +130,25 @@
 /* Tile animation effects */
 .dragging {
   @apply shadow-tile-hover scale-105 z-50;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+  opacity: 0.8;
+}
+
+/* Drop target indicators */
+.drop-target {
+  /* Subtle glow effect for cells that can accept drops */
+  @apply transition-colors duration-150;
+}
+
+.drop-target:empty {
+  /* Only highlight empty cells */
+  @apply bg-primary/10;
+}
+
+/* Add visual feedback when dragging a tile over a valid cell */
+.board-cell:hover.drop-target {
+  @apply bg-primary/20;
+  box-shadow: inset 0 0 0 2px theme('colors.primary.DEFAULT');
 }
 
 /* Glass panel effect */
@@ -148,6 +191,25 @@
   aspect-ratio: 1 / 1 !important;
   width: 100%;
   height: 100%;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+/* Touch-specific tile styles */
+@media (pointer: coarse) {
+  .tile-draggable {
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .tile-draggable:active {
+    transform: scale(1.05);
+  }
+  
+  .dragging {
+    transform: scale(1.1) !important;
+    z-index: 1000;
+  }
 }
 
 .board-grid {

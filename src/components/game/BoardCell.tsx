@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { BoardCell as BoardCellType, Tile as TileType } from '@/types/scrabble';
 import Tile from './Tile';
 import { cn } from '@/lib/utils';
@@ -36,15 +36,45 @@ const BoardCell: React.FC<BoardCellProps> = ({
 }) => {
   const cellRef = useRef<HTMLDivElement>(null);
   
+  // This function determines if the cell can accept a drop
+  // Either the cell is empty OR it contains a tile placed in the current turn
+  const canAcceptDrop = useCallback(() => {
+    return !cell.tile || isCurrentTurnPlacement;
+  }, [cell.tile, isCurrentTurnPlacement]);
+  
+  // Add listener for custom drop event from touch devices
+  useEffect(() => {
+    const currentRef = cellRef.current;
+    if (!currentRef || !isMobile) return;
+    
+    const handleCustomDrop = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      
+      if (canAcceptDrop()) {
+        // Use the tileId from the custom event detail
+        const tileId = customEvent.detail?.tileId;
+        
+        if (tileId) {
+          // Call the onDrop handler with row and column
+          onDrop(cell.row, cell.col);
+        }
+      }
+      
+      // Prevent event bubbling
+      e.stopPropagation();
+    };
+    
+    // Add listener for our custom drop event
+    currentRef.addEventListener('custom-drop', handleCustomDrop);
+    
+    return () => {
+      currentRef.removeEventListener('custom-drop', handleCustomDrop);
+    };
+  }, [isMobile, cell.row, cell.col, onDrop, canAcceptDrop]);
+  
   const isHighlighted = highlightedCells.some(
     (highlightedCell) => highlightedCell.row === cell.row && highlightedCell.col === cell.col
   );
-
-  // This function just determines if the cell can accept a drop
-  // Either the cell is empty OR it contains a tile placed in the current turn
-  const canAcceptDrop = () => {
-    return !cell.tile || isCurrentTurnPlacement;
-  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -68,13 +98,18 @@ const BoardCell: React.FC<BoardCellProps> = ({
   };
   
   const handleTouchEnd = (e: React.TouchEvent) => {
+    // Prevent default to avoid any unwanted behaviors
+    e.preventDefault();
+    
+    // Check if there are any dragging tiles
     const draggedTiles = document.querySelectorAll('.dragging');
-    if (draggedTiles.length > 0) {
-      const dropEvent = new Event('drop', { bubbles: true }) as unknown as React.DragEvent;
-      
-      if (canAcceptDrop()) {
-        handleDrop(dropEvent);
-      }
+    if (draggedTiles.length > 0 && canAcceptDrop()) {
+      // Dispatching custom-drop event handled by the useEffect
+      const customEvent = new CustomEvent('custom-drop', {
+        bubbles: true,
+        detail: { tileId: draggedTiles[0].getAttribute('data-tile-id') }
+      });
+      cellRef.current?.dispatchEvent(customEvent);
     }
   };
 
@@ -114,7 +149,8 @@ const BoardCell: React.FC<BoardCellProps> = ({
         isHighlighted && 'bg-primary/30 border-primary/60',
         isCurrentTurnPlacement && currentTurnIndicatorClass,
         'transition-all duration-150',
-        'p-[1px] sm:p-[2px]'
+        'p-[1px] sm:p-[2px]',
+        canAcceptDrop() && 'drop-target' // Add a class to highlight droppable cells
       )}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
