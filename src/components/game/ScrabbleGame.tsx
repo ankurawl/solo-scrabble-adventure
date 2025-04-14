@@ -102,39 +102,44 @@ const ScrabbleGame: React.FC = () => {
   const handlePlaceTile = useCallback((row: number, col: number, tileId: string) => {
     if (!gameState.isPlaying) return;
     
+    // Get information about the target cell
     const boardCell = gameState.board.cells[row][col];
     
-    if (boardCell.tile) {
-      toast.error('This cell is already occupied');
+    // Check if the target cell has a previously placed tile (from previous turns)
+    if (boardCell.tile && boardCell.tile.isPlaced) {
+      toast.error('Cannot move tiles from previous turns');
       return;
     }
     
+    // If we don't have the tileId but have currentDraggedTile, use that
+    if (!tileId && currentDraggedTile) {
+      tileId = currentDraggedTile.id;
+    }
+    
+    if (!tileId) {
+      return;
+    }
+    
+    // Check if there's already a tile in this cell from the current turn
     const existingPlacedTileIndex = placedTiles.findIndex(
       pt => pt.row === row && pt.col === col
     );
     
-    if (existingPlacedTileIndex !== -1) {
-      const existingTile = placedTiles[existingPlacedTileIndex].tile;
-      setGameState(prev => ({
-        ...prev,
-        rack: [...prev.rack, existingTile]
-      }));
-      
-      setPlacedTiles(prev => prev.filter((_, index) => index !== existingPlacedTileIndex));
-    }
-    
+    // Find the tile being dragged - either from rack or from the board
     let tileToPlace: Tile | undefined;
     let isFromRack = false;
     let existingTilePosition: { row: number, col: number } | null = null;
     
-    const rackTile = gameState.rack.find(t => t.id === tileId);
-    if (rackTile) {
-      tileToPlace = rackTile;
+    // Check if dragging from rack
+    const rackTileIndex = gameState.rack.findIndex(t => t.id === tileId);
+    if (rackTileIndex !== -1) {
+      tileToPlace = { ...gameState.rack[rackTileIndex] };
       isFromRack = true;
     } else {
+      // Check if dragging a tile already on the board (placed in current turn)
       const placedTileIndex = placedTiles.findIndex(pt => pt.tile.id === tileId);
       if (placedTileIndex !== -1) {
-        tileToPlace = placedTiles[placedTileIndex].tile;
+        tileToPlace = { ...placedTiles[placedTileIndex].tile };
         existingTilePosition = {
           row: placedTiles[placedTileIndex].row,
           col: placedTiles[placedTileIndex].col
@@ -142,42 +147,111 @@ const ScrabbleGame: React.FC = () => {
       }
     }
     
-    if (!tileToPlace) return;
+    if (!tileToPlace) {
+      return;
+    }
     
-    setPlacedTiles(prev => {
+    // Don't allow dropping a tile onto itself
+    if (existingTilePosition && existingTilePosition.row === row && existingTilePosition.col === col) {
+      return;
+    }
+    
+    // Create a deep copy of the placed tiles to work with
+    const newPlacedTiles = [...placedTiles];
+    
+    // CASE 1: Target cell already has a tile from current turn (swap)
+    if (existingPlacedTileIndex !== -1) {
+      const existingTile = { ...placedTiles[existingPlacedTileIndex].tile };
+      
+      // CASE 1A: Dragging from another cell on the board to an occupied cell (swap)
       if (existingTilePosition) {
-        return prev.filter(pt => pt.tile.id !== tileId);
-      } else {
-        return [...prev, { row, col, tile: tileToPlace }];
+        // Remove both tiles and add them in swapped positions in a single update
+        const filteredTiles = newPlacedTiles.filter(pt => 
+          pt.tile.id !== tileId && !(pt.row === row && pt.col === col)
+        );
+        
+        // Add both tiles in their new positions
+        filteredTiles.push({ row, col, tile: tileToPlace });
+        filteredTiles.push({ 
+          row: existingTilePosition.row, 
+          col: existingTilePosition.col, 
+          tile: existingTile 
+        });
+        
+        // Update state in a single operation
+        setPlacedTiles(filteredTiles);
+      } 
+      // CASE 1B: Dragging from rack to an occupied cell
+      else {
+        // Add tile from rack to board and return existing tile to rack
+        setGameState(prev => ({
+          ...prev,
+          rack: [...prev.rack.filter(t => t.id !== tileId), existingTile]
+        }));
+        
+        const filteredTiles = newPlacedTiles.filter(pt => 
+          !(pt.row === row && pt.col === col)
+        );
+        filteredTiles.push({ row, col, tile: tileToPlace });
+        
+        setPlacedTiles(filteredTiles);
       }
-    });
+    }
+    // CASE 2: Target cell is empty
+    else {
+      // CASE 2A: Moving a tile from one board position to another empty cell
+      if (existingTilePosition) {
+        // Simply update the tile's position in a single operation
+        const filteredTiles = newPlacedTiles.filter(pt => pt.tile.id !== tileId);
+        filteredTiles.push({ row, col, tile: tileToPlace });
+        
+        setPlacedTiles(filteredTiles);
+      } 
+      // CASE 2B: Moving a tile from rack to an empty cell
+      else {
+        // Add the tile to the board
+        setPlacedTiles([...newPlacedTiles, { row, col, tile: tileToPlace }]);
+        
+        // Remove the tile from the rack
+        if (isFromRack) {
+          setGameState(prev => ({
+            ...prev,
+            rack: prev.rack.filter(t => t.id !== tileId)
+          }));
+        }
+      }
+    }
     
+    // Check if center is occupied (important for first move)
     if (row === 7 && col === 7) {
       setIsCenterOccupied(true);
     }
     
-    if (isFromRack) {
-      setGameState(prev => ({
-        ...prev,
-        rack: prev.rack.filter(t => t.id !== tileId)
-      }));
-    }
-    
+    // Reset current dragged tile
     setCurrentDraggedTile(null);
-  }, [gameState, placedTiles]);
+  }, [gameState, placedTiles, currentDraggedTile]);
 
   const handleTileDragStart = useCallback((e: React.DragEvent, tile: Tile) => {
+    // Store the dragged tile in state
+    e.dataTransfer.setData('text/plain', tile.id);
+    e.dataTransfer.effectAllowed = 'move';
+    
+    // Set the current dragged tile
     setCurrentDraggedTile(tile);
   }, []);
 
   const handleShuffleTiles = useCallback(() => {
+    // Create a copy of the current rack tiles and shuffle only those
+    const currentRackTiles = [...gameState.rack];
+    const shuffledRack = shuffleArray(currentRackTiles);
+    
     setGameState(prev => ({
       ...prev,
-      rack: shuffleArray(prev.rack)
+      rack: shuffledRack // Use the shuffled copy
     }));
     
     toast.success('Tiles shuffled');
-  }, []);
+  }, [gameState.rack]); // Add dependency on gameState.rack
 
   const handleRecallTiles = useCallback(() => {
     if (placedTiles.length === 0) return;
@@ -290,6 +364,41 @@ const ScrabbleGame: React.FC = () => {
     }
   }, [gameState, placedTiles, isCenterOccupied]);
 
+  const handleReturnTileToRack = useCallback((tileId: string) => {
+    // Find the placed tile to return
+    const placedTileIndex = placedTiles.findIndex(pt => pt.tile.id === tileId);
+    
+    // Only proceed if we found the tile in the placed tiles
+    if (placedTileIndex === -1) {
+      return;
+    }
+    
+    const tileToReturn = { ...placedTiles[placedTileIndex].tile };
+    
+    // Use a single update operation to avoid race conditions
+    // First update placedTiles
+    setPlacedTiles(prev => prev.filter(pt => pt.tile.id !== tileId));
+    
+    // Then update the rack in a separate operation
+    setGameState(prev => {
+      // Double-check the tile isn't already in the rack to prevent duplicates
+      const isAlreadyInRack = prev.rack.some(t => t.id === tileId);
+      
+      if (isAlreadyInRack) {
+        return prev; // No change if already in rack
+      }
+      
+      // Add the tile to the rack
+      return {
+        ...prev,
+        rack: [...prev.rack, tileToReturn]
+      };
+    });
+    
+    // Reset current dragged tile
+    setCurrentDraggedTile(null);
+  }, [placedTiles]);
+
   return (
     <div className="flex flex-col items-center w-full mx-auto px-2 sm:px-4 py-2 sm:py-4 max-w-[600px]">
       <div className="w-full mb-1 sm:mb-2 animate-fade-in">
@@ -343,6 +452,7 @@ const ScrabbleGame: React.FC = () => {
             onPlayWord={handlePlayWord}
             onRecallTiles={handleRecallTiles}
             canPlay={placedTiles.length > 0}
+            onReturnTileToRack={handleReturnTileToRack}
           />
         </div>
       </div>

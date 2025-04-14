@@ -10,6 +10,8 @@ interface TileProps {
   onDragStart?: (e: React.DragEvent, tile: TileType) => void;
   onTileClick?: (tile: TileType) => void;
   isMobile?: boolean;
+  // New prop to indicate if the tile was placed in the current turn
+  isCurrentTurnPlacement?: boolean;
 }
 
 const Tile: React.FC<TileProps> = ({
@@ -19,22 +21,36 @@ const Tile: React.FC<TileProps> = ({
   isPlayable = true,
   onDragStart,
   onTileClick,
+  // Default to false - older tiles are not current turn placements
+  isCurrentTurnPlacement = false,
 }) => {
   const tileRef = useRef<HTMLDivElement>(null);
   const touchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartPosRef = useRef<{ x: number, y: number } | null>(null);
 
+  // If this tile is from a placement in the current turn, it should be draggable
+  // even if it's technically "placed" on the board
+  const isDraggable = isPlayable || isCurrentTurnPlacement;
+
   const handleDragStart = (e: React.DragEvent) => {
-    if (!isPlayable && tile.isPlaced) return; // Don't allow dragging permanently placed tiles
+    // Only allow dragging if the tile is in the rack or was placed in the current turn
+    if (!isDraggable) {
+      e.preventDefault();
+      return;
+    }
     
+    // Set the drag data with the tile ID
     e.dataTransfer.setData('text/plain', tile.id);
+    e.dataTransfer.effectAllowed = 'move';
+    
     if (onDragStart) {
       onDragStart(e, tile);
     }
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (!isPlayable && tile.isPlaced) return; // Don't allow dragging permanently placed tiles
+    // Same condition as handleDragStart
+    if (!isDraggable) return;
     
     // Store the initial touch position
     touchStartPosRef.current = {
@@ -53,7 +69,8 @@ const Tile: React.FC<TileProps> = ({
   };
   
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchStartPosRef.current || !isPlayable) return;
+    // Same condition as handleDragStart
+    if (!touchStartPosRef.current || !isDraggable) return;
     
     // Clear the timeout to prevent tap event
     if (touchTimeoutRef.current) {
@@ -95,7 +112,7 @@ const Tile: React.FC<TileProps> = ({
     touchStartPosRef.current = null;
     
     // If this was a tap, handle click
-    if (onTileClick && isPlayable) {
+    if (onTileClick && isDraggable) {
       onTileClick(tile);
     }
     
@@ -116,17 +133,20 @@ const Tile: React.FC<TileProps> = ({
         'bg-scrabble-tile border border-amber-700/30 rounded-sm shadow-tile select-none cursor-pointer',
         'transform transition-all duration-200 ease-out',
         isDragging ? 'dragging opacity-75' : 'hover:shadow-tile-hover hover:scale-102',
-        !isPlayable && tile.isPlaced && 'opacity-90 cursor-default',
-        !isPlayable && !tile.isPlaced && 'cursor-grab',
+        !isDraggable && 'opacity-90 cursor-default',
+        isDraggable && 'cursor-grab',
+        isCurrentTurnPlacement && 'ring-1 ring-green-500/50',
         'text-center', // Ensure text is centered
         'tile-draggable', // Add class for drag and drop detection
         'tile' // Add class for ensuring square shape
       )}
-      draggable={isPlayable || !tile.isPlaced}
+      draggable={isDraggable}
       onDragStart={handleDragStart}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      data-tile-id={tile.id}
+      data-is-current-turn={isCurrentTurnPlacement ? 'true' : 'false'}
     >
       <div className="relative flex items-center justify-center h-full w-full">
         {/* Main letter */}

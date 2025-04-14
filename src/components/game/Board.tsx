@@ -24,16 +24,26 @@ const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile, p
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
   };
 
   const handleDrop = (row: number, col: number) => {
-    if (currentDraggedTile) {
-      onPlaceTile(row, col, currentDraggedTile.id);
+    // Directly get the tile ID from the dataTransfer object or use currentDraggedTile
+    const tileId = currentDraggedTile?.id || '';
+    
+    if (tileId) {
+      // Call onPlaceTile with the row, col, and tile ID
+      onPlaceTile(row, col, tileId);
     }
+    
+    // Reset the dragged over cell
     setDraggedOverCell(null);
   };
 
   const handleCellDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
     const cellElement = e.currentTarget as HTMLDivElement;
     const row = parseInt(cellElement.getAttribute('data-row') || '0');
     const col = parseInt(cellElement.getAttribute('data-col') || '0');
@@ -47,6 +57,15 @@ const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile, p
       (placedTile) => placedTile.row === row && placedTile.col === col
     );
     return placedTile ? placedTile.tile : null;
+  };
+
+  // Check if the cell at (row, col) contains a tile placed in the current turn
+  const isCurrentTurnPlacement = (row: number, col: number) => {
+    const cellHasCurrentTurnTile = placedTiles.some(
+      (placedTile) => placedTile.row === row && placedTile.col === col
+    );
+    
+    return cellHasCurrentTurnTile;
   };
 
   const highlightedCells = draggedOverCell ? [draggedOverCell] : [];
@@ -87,6 +106,7 @@ const Board: React.FC<BoardProps> = ({ board, onPlaceTile, currentDraggedTile, p
                 onDragOver={handleCellDragOver}
                 highlightedCells={highlightedCells}
                 placedTile={getPlacedTileForCell(rowIndex, colIndex)}
+                isCurrentTurnPlacement={isCurrentTurnPlacement(rowIndex, colIndex)}
               />
             </div>
           ))

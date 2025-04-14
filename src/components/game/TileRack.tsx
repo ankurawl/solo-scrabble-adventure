@@ -16,6 +16,7 @@ interface TileRackProps {
   canPlay: boolean;
   wordScore?: number;
   isMobile?: boolean;
+  onReturnTileToRack?: (tileId: string) => void;
 }
 
 const TileRack: React.FC<TileRackProps> = ({
@@ -27,7 +28,8 @@ const TileRack: React.FC<TileRackProps> = ({
   onRecallTiles,
   canPlay,
   wordScore,
-  isMobile = useIsMobile()
+  isMobile = useIsMobile(),
+  onReturnTileToRack,
 }) => {
   const [draggedTileId, setDraggedTileId] = useState<string | null>(null);
 
@@ -40,11 +42,27 @@ const TileRack: React.FC<TileRackProps> = ({
     setDraggedTileId(null);
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const tileId = e.dataTransfer.getData('text/plain');
+    if (tileId && onReturnTileToRack) {
+      onReturnTileToRack(tileId);
+    }
+  };
+
   return (
-    <div className={cn(
-      "glass-panel w-full animate-slide-up",
-      "p-2 sm:p-3 rounded-md"
-    )}>
+    <div 
+      className={cn(
+        "glass-panel w-full animate-slide-up",
+        "p-2 sm:p-3 rounded-md"
+      )}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <div className={cn(
         "flex justify-between items-center",
         "mb-3"
@@ -101,7 +119,11 @@ const TileRack: React.FC<TileRackProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 justify-center mt-3 mb-1">
+      <div 
+        className="flex flex-wrap gap-2 justify-center mt-3 mb-1"
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
         {tiles.map((tile) => (
           <div
             key={tile.id}

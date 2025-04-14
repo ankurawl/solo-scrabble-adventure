@@ -11,6 +11,7 @@ interface BoardCellProps {
   highlightedCells?: { row: number; col: number }[];
   placedTile?: TileType | null;
   isMobile?: boolean;
+  isCurrentTurnPlacement?: boolean;
 }
 
 const CELL_TYPE_LABELS: Record<string, string> = {
@@ -29,6 +30,7 @@ const BoardCell: React.FC<BoardCellProps> = ({
   onDragOver,
   highlightedCells = [],
   placedTile,
+  isCurrentTurnPlacement = false,
 }) => {
   const cellRef = useRef<HTMLDivElement>(null);
   
@@ -36,34 +38,61 @@ const BoardCell: React.FC<BoardCellProps> = ({
     (highlightedCell) => highlightedCell.row === cell.row && highlightedCell.col === cell.col
   );
 
+  // This function just determines if the cell can accept a drop
+  // Either the cell is empty OR it contains a tile placed in the current turn
+  const canAcceptDrop = () => {
+    return !cell.tile || isCurrentTurnPlacement;
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    onDragOver(e);
+    // Show we can drop here
+    e.dataTransfer.dropEffect = 'move';
+    
+    if (canAcceptDrop()) {
+      onDragOver(e);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    onDrop(cell.row, cell.col);
+    
+    // Get the tile ID from the dataTransfer
+    const tileId = e.dataTransfer.getData('text/plain');
+    if (!tileId) return;
+    
+    // Only handle the drop if the cell can accept it
+    if (canAcceptDrop()) {
+      // Pass the row and col to the parent component's onDrop handler
+      onDrop(cell.row, cell.col);
+      
+      // Stop event propagation to prevent multiple drops
+      e.stopPropagation();
+    }
   };
   
   const handleTouchEnd = (e: React.TouchEvent) => {
-    // Check if there's a dragged tile over this cell
     const draggedTiles = document.querySelectorAll('.dragging');
     if (draggedTiles.length > 0) {
-      // Simulate a drop event
       const dropEvent = new Event('drop', { bubbles: true }) as unknown as React.DragEvent;
-      handleDrop(dropEvent);
+      
+      if (canAcceptDrop()) {
+        handleDrop(dropEvent);
+      }
     }
   };
 
   const renderCellContent = () => {
-    // Check for placed tile from game state first
     const tileToShow = placedTile || cell.tile;
     
     if (tileToShow) {
       return (
         <div className="w-full h-full">
-          <Tile tile={tileToShow} isPlayable={!cell.tile?.isPlaced} />
+          <Tile 
+            tile={tileToShow} 
+            isPlayable={!cell.tile?.isPlaced} 
+            isCurrentTurnPlacement={isCurrentTurnPlacement} 
+          />
         </div>
       );
     }
@@ -75,21 +104,27 @@ const BoardCell: React.FC<BoardCellProps> = ({
     );
   };
 
+  const currentTurnIndicatorClass = isCurrentTurnPlacement ? 'ring-2 ring-green-500/50' : '';
+
   return (
     <div
       ref={cellRef}
       className={cn(
         'relative border border-gray-300/80',
-        'w-full h-full', // Use full width/height of grid cell
-        'board-cell', // Add class for ensuring square shape
+        'w-full h-full',
+        'board-cell',
         cell.type !== 'regular' && cell.type,
         isHighlighted && 'bg-primary/30 border-primary/60',
+        isCurrentTurnPlacement && currentTurnIndicatorClass,
         'transition-all duration-150',
-        'p-[1px] sm:p-[2px]' // Consistent padding based on screen size
+        'p-[1px] sm:p-[2px]'
       )}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
       onTouchEnd={handleTouchEnd}
+      data-current-turn-placement={isCurrentTurnPlacement ? 'true' : 'false'}
+      data-row={cell.row}
+      data-col={cell.col}
     >
       {renderCellContent()}
     </div>
