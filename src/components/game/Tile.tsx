@@ -33,16 +33,29 @@ const Tile: React.FC<TileProps> = ({
   // even if it's technically "placed" on the board
   const isDraggable = isPlayable || isCurrentTurnPlacement;
 
+  // Clean up any pending timers when component unmounts
+  useEffect(() => {
+    return () => {
+      if (touchTimeoutRef.current) {
+        clearTimeout(touchTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Handle when touch moves outside the tile
   const handleGlobalTouchMove = useCallback((e: TouchEvent) => {
     if (isDraggingTouch && tileRef.current) {
-      e.preventDefault();
+      e.preventDefault(); // Prevent scrolling/zooming
       
       // Update the tile position to follow the finger
+      const touch = e.touches[0];
+      const tileSize = tileRef.current.offsetWidth / 2;
+      
       tileRef.current.style.position = 'absolute';
-      tileRef.current.style.left = `${e.touches[0].clientX - 25}px`;
-      tileRef.current.style.top = `${e.touches[0].clientY - 25}px`;
+      tileRef.current.style.left = `${touch.clientX - tileSize}px`;
+      tileRef.current.style.top = `${touch.clientY - tileSize}px`;
       tileRef.current.style.zIndex = '1000';
+      tileRef.current.style.pointerEvents = 'none'; // Ensure we can detect elements underneath
     }
   }, [isDraggingTouch]);
 
@@ -50,15 +63,20 @@ const Tile: React.FC<TileProps> = ({
   const handleGlobalTouchEnd = useCallback((e: TouchEvent) => {
     if (isDraggingTouch) {
       // Find elements below the touch position
+      const touch = e.changedTouches[0];
       const elementBelow = document.elementFromPoint(
-        e.changedTouches[0].clientX,
-        e.changedTouches[0].clientY
+        touch.clientX,
+        touch.clientY
       );
       
       // If we found an element that can accept drops
       if (elementBelow) {
         // Try to find a board cell
         const cellElement = elementBelow.closest('[data-row]');
+        
+        // Try to find the tile rack (check for the rack container or its children)
+        const rackElement = elementBelow.closest('.tile-rack-container') || 
+                            elementBelow.closest('.tile-rack-drop-zone');
         
         if (cellElement) {
           // Dispatch a custom drop event on the cell
@@ -67,6 +85,14 @@ const Tile: React.FC<TileProps> = ({
             detail: { tileId: tile.id }
           });
           cellElement.dispatchEvent(dropEvent);
+        } 
+        else if (rackElement && isCurrentTurnPlacement) {
+          // If we're over the rack and this is a current turn placement, dispatch rack-drop event
+          const rackDropEvent = new CustomEvent('rack-drop', {
+            bubbles: true,
+            detail: { tileId: tile.id }
+          });
+          rackElement.dispatchEvent(rackDropEvent);
         }
       }
       
@@ -76,6 +102,7 @@ const Tile: React.FC<TileProps> = ({
         tileRef.current.style.left = '';
         tileRef.current.style.top = '';
         tileRef.current.style.zIndex = '';
+        tileRef.current.style.pointerEvents = '';
         tileRef.current.classList.remove('dragging');
       }
       
@@ -90,7 +117,7 @@ const Tile: React.FC<TileProps> = ({
     
     // Reset touch position
     touchStartPosRef.current = null;
-  }, [isDraggingTouch, tile.id]);
+  }, [isDraggingTouch, tile.id, isCurrentTurnPlacement]);
 
   // Effect to add document-level touch event handlers when a tile is being dragged
   useEffect(() => {
@@ -108,14 +135,25 @@ const Tile: React.FC<TileProps> = ({
     };
   }, [isMobile, handleGlobalTouchMove, handleGlobalTouchEnd]);
 
+  // Effect to add/remove dragging-active class on the body
+  useEffect(() => {
+    if (isDraggingTouch || isDragging) {
+      document.body.classList.add('dragging-active');
+    } else {
+      document.body.classList.remove('dragging-active');
+    }
+    
+    return () => {
+      document.body.classList.remove('dragging-active');
+    };
+  }, [isDraggingTouch, isDragging]);
+
   const handleDragStart = (e: React.DragEvent) => {
     // Only allow dragging if the tile is in the rack or was placed in the current turn
     if (!isDraggable) {
       e.preventDefault();
       return;
     }
-
-    console.log('Drag started for tile:', tile.id, tile.letter);
     
     // Set the drag data with the tile ID
     e.dataTransfer.setData('text/plain', tile.id);
@@ -132,8 +170,6 @@ const Tile: React.FC<TileProps> = ({
   };
 
   const handleDragEnd = (e: React.DragEvent) => {
-    console.log('Drag ended for tile:', tile.id, tile.letter);
-    
     if (tileRef.current) {
       tileRef.current.classList.remove('dragging');
     }
@@ -220,6 +256,15 @@ const Tile: React.FC<TileProps> = ({
     if (onTileClick && isDraggable && !isDraggingTouch && !isDragging) {
       onTileClick(tile);
     }
+    
+    // Ensure we clean up any visual state
+    if (tileRef.current) {
+      tileRef.current.style.position = '';
+      tileRef.current.style.left = '';
+      tileRef.current.style.top = '';
+      tileRef.current.style.zIndex = '';
+      tileRef.current.style.pointerEvents = '';
+    }
   };
 
   return (
@@ -237,19 +282,20 @@ const Tile: React.FC<TileProps> = ({
         'tile-draggable', // Add class for drag and drop detection
         'tile' // Add class for ensuring square shape
       )}
-      draggable={isDraggable && !isMobile}
+      draggable={isDraggable}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      style={{touchAction: 'none'}}
       data-tile-id={tile.id}
       data-is-current-turn={isCurrentTurnPlacement ? 'true' : 'false'}
     >
       <div className="relative flex items-center justify-center h-full w-full">
         {/* Main letter */}
         <span className={cn(
-          "text-[0.8em] sm:text-[1em] md:text-[1.2em]", // Responsive font sizing
+          "tile-letter font-medium text-stone-800",
           tile.letter === ' ' && "text-amber-700/50"
         )}>
           {tile.letter === ' ' ? '' : tile.letter} {/* Display blank as empty */}
@@ -257,9 +303,8 @@ const Tile: React.FC<TileProps> = ({
         
         {/* Points number - positioned absolutely */}
         <span className={cn(
-          "absolute font-normal text-amber-900",
-          "text-[0.5em] sm:text-[0.6em]", // Responsive font sizing
-          "bottom-1 right-1" // Position at bottom right with padding
+          "absolute font-normal text-amber-900 tile-points",
+          "bottom-0 right-0 pr-[2px] pb-[1px]" // Position at bottom right with padding
         )}>
           {tile.points}
         </span>

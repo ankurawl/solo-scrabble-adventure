@@ -295,6 +295,7 @@ const ScrabbleGame: React.FC = () => {
     
     const boardCopy = JSON.parse(JSON.stringify(gameState.board.cells)) as BoardCell[][];
     
+    // Add current turn's tiles to the board copy for validation
     placedTiles.forEach(({ row, col, tile }) => {
       boardCopy[row][col].tile = tile;
     });
@@ -340,9 +341,14 @@ const ScrabbleGame: React.FC = () => {
         moveScore += calculateWordScore(tiles, cells, direction);
       });
       
+      // Create a new board state with all the placed tiles marked as permanent
       const newBoard = JSON.parse(JSON.stringify(gameState.board.cells)) as BoardCell[][];
       placedTiles.forEach(({ row, col, tile }) => {
-        newBoard[row][col].tile = { ...tile, isPlaced: true };
+        // Mark tiles as permanently placed on the board
+        newBoard[row][col].tile = { 
+          ...tile, 
+          isPlaced: true  // This flag indicates the tile is from a previous turn
+        };
       });
       
       const tilesToDraw = Math.min(placedTiles.length, gameState.bag.length);
@@ -356,6 +362,7 @@ const ScrabbleGame: React.FC = () => {
         score: prev.score + moveScore
       }));
       
+      // Clear the placedTiles array since they're now part of the board
       setPlacedTiles([]);
       setPotentialScore(undefined);
       
@@ -417,15 +424,15 @@ const ScrabbleGame: React.FC = () => {
   }, [placedTiles]);
 
   return (
-    <div className="flex flex-col items-center w-full mx-auto px-2 sm:px-4 py-2 sm:py-4 max-w-[600px] touch-none">
-      <div className="w-full mb-1 sm:mb-2 animate-fade-in">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center">Solo Scrabble</h1>
+    <div className="flex flex-col items-center w-full mx-auto px-1 sm:px-2 py-1 sm:py-2 max-w-screen-xl touch-none bg-background">
+      <div className="w-full mb-1 animate-fade-in">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-center">Solo Scrabble</h1>
       </div>
 
-      {/* Consistent layout across all screen sizes */}
-      <div className="w-full flex flex-col h-[calc(100vh-8rem)]">
-        {/* Fixed header with score - inline without panel */}
-        <div className="sticky top-0 z-10 w-full flex justify-between items-center py-1 px-2">
+      {/* Fixed layout across all screen sizes */}
+      <div className="w-full flex flex-col h-[calc(100vh-5rem)] max-h-[1200px]">
+        {/* Fixed header with score */}
+        <div className="sticky top-0 z-10 w-full flex justify-between items-center py-1 px-2 bg-background/90 backdrop-blur-sm">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-500">Score:</span>
             <span className="text-xl sm:text-2xl font-semibold">
@@ -447,9 +454,9 @@ const ScrabbleGame: React.FC = () => {
           </Button>
         </div>
         
-        {/* Scrollable board area */}
-        <div className="flex-grow overflow-hidden my-2 sm:my-4 touch-none">
-          <div className="board-wrapper mx-auto touch-none">
+        {/* Fixed board size with proper container */}
+        <div className="flex-grow overflow-hidden my-1 sm:my-2 flex justify-center items-center">
+          <div className="board-wrapper w-full max-w-[min(92vw,92vh,800px)] aspect-square mx-auto touch-none">
             <Board
               board={gameState.board.cells}
               onPlaceTile={handlePlaceTile}
@@ -461,7 +468,7 @@ const ScrabbleGame: React.FC = () => {
         </div>
         
         {/* Fixed footer with tiles */}
-        <div className="sticky bottom-0 z-10 w-full">
+        <div className="sticky bottom-0 z-10 w-full bg-background/95 backdrop-blur-sm">
           <TileRack
             tiles={gameState.rack}
             tilesRemaining={gameState.bag.length}

@@ -15,128 +15,162 @@ interface BoardCellProps {
   onTileDragStart?: (e: React.DragEvent, tile: TileType) => void;
 }
 
-const CELL_TYPE_LABELS: Record<string, string> = {
-  'triple-word': 'TW',
-  'double-word': 'DW',
-  'triple-letter': 'TL',
-  'double-letter': 'DL',
-  'center': '★',
-  'regular': '',
-};
-
 const BoardCell: React.FC<BoardCellProps> = ({
-  isMobile = useIsMobile(),
   cell,
   onDrop,
   onDragOver,
   highlightedCells = [],
-  placedTile,
+  placedTile = null,
+  isMobile = useIsMobile(),
   isCurrentTurnPlacement = false,
   onTileDragStart,
 }) => {
   const cellRef = useRef<HTMLDivElement>(null);
   
-  // This function determines if the cell can accept a drop
-  // Either the cell is empty OR it contains a tile placed in the current turn
-  const canAcceptDrop = useCallback(() => {
-    return !cell.tile || isCurrentTurnPlacement;
-  }, [cell.tile, isCurrentTurnPlacement]);
-  
-  // Add listener for custom drop event from touch devices
-  useEffect(() => {
-    const currentRef = cellRef.current;
-    if (!currentRef || !isMobile) return;
-    
-    const handleCustomDrop = (e: Event) => {
-      const customEvent = e as CustomEvent;
-      
-      if (canAcceptDrop()) {
-        // Use the tileId from the custom event detail
-        const tileId = customEvent.detail?.tileId;
-        
-        if (tileId) {
-          // Call the onDrop handler with row and column
-          onDrop(cell.row, cell.col);
-        }
-      }
-      
-      // Prevent event bubbling
-      e.stopPropagation();
-    };
-    
-    // Add listener for our custom drop event
-    currentRef.addEventListener('custom-drop', handleCustomDrop);
-    
-    return () => {
-      currentRef.removeEventListener('custom-drop', handleCustomDrop);
-    };
-  }, [isMobile, cell.row, cell.col, onDrop, canAcceptDrop]);
-  
+  // Map cell type to background color classes (removed text-white from these classes)
+  const getCellTypeClass = () => {
+    switch (cell.type) {
+      case 'triple-word':
+        return 'bg-red-600/90';
+      case 'double-word':
+        return 'bg-pink-400/90';
+      case 'triple-letter':
+        return 'bg-blue-600/90';
+      case 'double-letter':
+        return 'bg-blue-400/90';
+      case 'center':
+        return 'bg-pink-400/90';
+      default:
+        return 'bg-amber-50';
+    }
+  };
+
+  // Get abbreviation for cell type
+  const getCellTypeAbbreviation = () => {
+    switch (cell.type) {
+      case 'triple-word':
+        return 'TW';
+      case 'double-word':
+        return 'DW';
+      case 'triple-letter':
+        return 'TL';
+      case 'double-letter':
+        return 'DL';
+      case 'center':
+        return '★';
+      default:
+        return '';
+    }
+  };
+
+  // Determine if this cell is highlighted
   const isHighlighted = highlightedCells.some(
     (highlightedCell) => highlightedCell.row === cell.row && highlightedCell.col === cell.col
   );
 
+  // Current turn placement styles
+  const currentTurnIndicatorClass = 'ring-2 ring-green-500';
+
+  // Whether the cell can accept a dropped tile
+  const canAcceptDrop = () => {
+    // Can drop if there's no tile from current turn AND no permanently placed tile
+    return !placedTile && !cell.tile;
+  };
+
+  // Handle drag over to allow dropping
   const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    // Show we can drop here
-    e.dataTransfer.dropEffect = 'move';
-    
     if (canAcceptDrop()) {
+      e.preventDefault();
+      // Show we can drop here
+      e.dataTransfer.dropEffect = 'move';
       onDragOver(e);
     }
   };
 
+  // Handle drop event
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    
-    // Always handle the drop regardless of tileId
-    // The parent component's onDrop will do the necessary validation
-    onDrop(cell.row, cell.col);
-    
-    // Stop event propagation to prevent multiple drops
+    // Stop event propagation to prevent multiple cell drops
     e.stopPropagation();
-  };
-  
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    // Prevent default to avoid any unwanted behaviors
-    e.preventDefault();
     
-    // Check if there are any dragging tiles
-    const draggedTiles = document.querySelectorAll('.dragging');
-    if (draggedTiles.length > 0 && canAcceptDrop()) {
-      // Dispatching custom-drop event handled by the useEffect
-      const customEvent = new CustomEvent('custom-drop', {
-        bubbles: true,
-        detail: { tileId: draggedTiles[0].getAttribute('data-tile-id') }
-      });
-      cellRef.current?.dispatchEvent(customEvent);
+    if (canAcceptDrop()) {
+      // Check for drag data
+      const tileId = e.dataTransfer.getData('text/plain');
+      if (tileId) {
+        onDrop(cell.row, cell.col);
+      }
     }
   };
-
-  const renderCellContent = () => {
-    const tileToShow = placedTile || cell.tile;
+  
+  // Handle custom drop event from touch drag
+  const handleCustomDrop = useCallback((e: Event) => {
+    const customEvent = e as CustomEvent;
+    if (customEvent.detail && customEvent.detail.tileId && canAcceptDrop()) {
+      onDrop(cell.row, cell.col);
+    }
+  }, [onDrop, cell.row, cell.col, canAcceptDrop]);
+  
+  // Handle touch end events - used for the custom drop mechanism with touch
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (canAcceptDrop()) {
+      // Prevent any default browser handling that might interfere with our custom drag/drop
+      e.preventDefault();
+    }
+  };
+  
+  // Set up listener for custom drop events from touch
+  useEffect(() => {
+    const currentRef = cellRef.current;
+    if (currentRef) {
+      currentRef.addEventListener('custom-drop', handleCustomDrop);
+    }
     
-    if (tileToShow) {
+    return () => {
+      if (currentRef) {
+        currentRef.removeEventListener('custom-drop', handleCustomDrop);
+      }
+    };
+  }, [handleCustomDrop]);
+  
+  // Render the cell content
+  const renderCellContent = () => {
+    // First check for a tile placed in the current turn (from placedTiles)
+    if (placedTile) {
       return (
-        <div className="w-full h-full">
-          <Tile 
-            tile={tileToShow} 
-            isPlayable={!cell.tile?.isPlaced} 
+        <div className="tile-container">
+          <Tile
+            tile={placedTile}
+            isPlayable={false}
             isCurrentTurnPlacement={isCurrentTurnPlacement}
             onDragStart={onTileDragStart}
           />
         </div>
       );
     }
-
+    
+    // Then check for a permanently placed tile from previous turns (from board state)
+    if (cell.tile) {
+      return (
+        <div className="tile-container">
+          <Tile
+            tile={cell.tile}
+            isPlayable={false}
+            isCurrentTurnPlacement={false} // This is from a previous turn
+            onDragStart={null}
+          />
+        </div>
+      );
+    }
+    
+    // Otherwise show the cell type abbreviation
     return (
-      <div className="w-full h-full flex items-center justify-center text-xs font-semibold text-gray-600/80">
-        {CELL_TYPE_LABELS[cell.type]}
+      <div className="cell-type-marker w-full h-full flex items-center justify-center">
+        <span className="font-semibold opacity-80 select-none cell-text text-white">
+          {getCellTypeAbbreviation()}
+        </span>
       </div>
     );
   };
-
-  const currentTurnIndicatorClass = isCurrentTurnPlacement ? 'ring-2 ring-green-500/50' : '';
 
   return (
     <div
@@ -145,11 +179,11 @@ const BoardCell: React.FC<BoardCellProps> = ({
         'relative border border-gray-300/80',
         'w-full h-full',
         'board-cell',
-        cell.type !== 'regular' && cell.type,
+        getCellTypeClass(),
         isHighlighted && 'bg-primary/30 border-primary/60',
         isCurrentTurnPlacement && currentTurnIndicatorClass,
         'transition-all duration-150',
-        'p-[1px] sm:p-[2px]',
+        'p-0 sm:p-[1px] md:p-[2px]',
         canAcceptDrop() && 'drop-target' // Add a class to highlight droppable cells
       )}
       onDragOver={handleDragOver}
@@ -158,6 +192,7 @@ const BoardCell: React.FC<BoardCellProps> = ({
       data-current-turn-placement={isCurrentTurnPlacement ? 'true' : 'false'}
       data-row={cell.row}
       data-col={cell.col}
+      style={{touchAction: 'none'}}
     >
       {renderCellContent()}
     </div>

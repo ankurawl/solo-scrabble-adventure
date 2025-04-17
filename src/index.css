@@ -127,11 +127,12 @@
   @apply bg-scrabble-center/60;
 }
 
-/* Tile animation effects */
+/* Dragging styles for all devices */
 .dragging {
-  @apply shadow-tile-hover scale-105 z-50;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+  transform: scale(1.1) !important;
+  z-index: 1000;
   opacity: 0.8;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
 }
 
 /* Drop target indicators */
@@ -165,17 +166,22 @@
   @apply shadow-lg;
 }
 
-/* Board container styling */
+/* Board container styling - updated for maximized display */
 .board-wrapper {
   @apply relative w-full;
-  max-width: min(100%, 80vh); /* Limit width to ensure square aspect ratio */
+  aspect-ratio: 1 / 1;
+  position: relative;
+  max-width: min(92vmin, 800px); /* Use vmin to adapt to both portrait and landscape */
+  margin: 0 auto;
 }
 
 .board-container {
   @apply relative w-full;
   aspect-ratio: 1 / 1; /* Maintain square aspect ratio */
   touch-action: none; /* Disable browser's default touch actions for custom handling */
-  overflow: hidden;
+  max-width: 100%; /* Ensure it doesn't overflow the viewport */
+  max-height: 100%; /* Ensure it doesn't overflow the viewport */
+  overflow: visible;
 }
 
 /* Ensure board cells are square */
@@ -184,6 +190,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  box-sizing: border-box;
+  padding: 1px;
+}
+
+/* Responsive text for board cells */
+.cell-text {
+  font-size: clamp(0.5rem, 1.7vmin, 1.1rem);
+  line-height: 1;
+  display: block;
 }
 
 /* Ensure tiles are square */
@@ -193,12 +212,36 @@
   height: 100%;
   -webkit-touch-callout: none;
   user-select: none;
+  box-sizing: border-box;
+}
+
+/* Container for tiles to isolate their styles from board cells */
+.tile-container {
+  width: 100%;
+  height: 100%;
+  /* Isolate tiles from parent cell text colors */
+  color: initial;
+}
+
+/* Responsive text sizes for tiles */
+.tile-letter {
+  font-size: clamp(1rem, 3vmin, 1.5rem);
+  line-height: 1;
+  /* Ensure consistent text color */
+  color: rgb(41, 37, 36); /* Dark gray/near black for readability */
+}
+
+.tile-points {
+  font-size: clamp(0.6rem, 1.2vmin, 0.9rem);
+  line-height: 1;
+  /* Set consistent color for points */
+  color: rgb(120, 53, 15); /* Amber/brown for points */
 }
 
 /* Touch-specific tile styles */
 @media (pointer: coarse) {
   .tile-draggable {
-    touch-action: none;
+    touch-action: none !important;
     -webkit-tap-highlight-color: transparent;
   }
 
@@ -206,16 +249,70 @@
     transform: scale(1.05);
   }
   
-  .dragging {
-    transform: scale(1.1) !important;
-    z-index: 1000;
+  /* Highlight the tile rack when dragging to indicate it can receive drops */
+  .tile-draggable.dragging ~ .tile-rack-container,
+  .dragging-active .tile-rack-container {
+    box-shadow: 0 0 0 3px theme('colors.green.500');
+    transition: box-shadow 0.3s ease;
   }
+  
+  .tile-rack-drop-zone {
+    min-height: 60px; /* Ensure there's a good area to drop even when the rack is empty */
+  }
+}
+
+/* Desktop-specific drag styles */
+@media (pointer: fine) {
+  .tile-draggable {
+    cursor: grab;
+    user-select: none;
+    -webkit-user-drag: element;
+  }
+  
+  .tile-draggable:hover {
+    transform: scale(1.05);
+    z-index: 5;
+  }
+  
+  /* Ensure drag visuals work on desktop */
+  [draggable=true] {
+    user-select: none;
+    -webkit-user-drag: element;
+    cursor: grab;
+  }
+  
+  /* Visual cue for dropping in rack */
+  .tile-rack-container.drag-over {
+    box-shadow: 0 0 0 3px theme('colors.green.500');
+  }
+}
+
+/* General styles for tile rack to make it more visually distinct as a drop target */
+.tile-rack-container {
+  position: relative;
+  transition: box-shadow 0.3s ease;
+}
+
+.tile-rack-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 0.75rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.tile-rack-container.drag-over::before {
+  background-color: rgba(var(--primary), 0.1);
 }
 
 .board-grid {
   @apply grid grid-cols-15 gap-0 w-full h-full;
-  transform-origin: center;
   will-change: transform;
+  box-sizing: border-box;
 }
 
 /* Fixed position elements */
@@ -229,21 +326,73 @@
   box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
 }
 
-/* Responsive cell sizing */
-@media (min-width: 640px) {
+/* Prevent scrolling issues during drag operations */
+html, body {
+  overscroll-behavior: none;
+  overflow-x: hidden;
+}
+
+/* Responsive layout for different devices - updated for tablets */
+@media (max-width: 639px) {
   .board-wrapper {
-    max-width: min(100%, 70vh);
+    max-width: 95vmin;
+  }
+}
+
+/* Tablet specific optimizations */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .board-wrapper {
+    max-width: min(92vmin, 800px);
+  }
+  
+  /* Optimize for iPad Mini and similar tablets */
+  @media (max-height: 850px) {
+    .board-cell {
+      padding: 0;
+    }
   }
 }
 
 @media (min-width: 1024px) {
   .board-wrapper {
-    max-width: min(100%, 65vh);
+    max-width: min(85vmin, 800px);
   }
 }
 
 @media (min-width: 1280px) {
   .board-wrapper {
-    max-width: min(100%, 60vh);
+    max-width: min(80vmin, 800px);
   }
+}
+
+/* Special optimization for specific devices like iPad Mini */
+@media (width >= 768px) and (width <= 834px) {
+  .board-wrapper {
+    max-width: min(95vmin, 800px);
+  }
+}
+
+/* Safari-specific fixes */
+@supports (-webkit-touch-callout: none) {
+  .board-container, .tile, .board-cell {
+    transform: translateZ(0); /* Force hardware acceleration */
+  }
+  
+  .tile-draggable {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+  }
+}
+
+/* Firefox-specific fixes */
+@-moz-document url-prefix() {
+  .board-wrapper, .board-container {
+    will-change: transform;
+  }
+}
+
+/* Prevent content selection during drag */
+* {
+  -webkit-user-drag: none;
+  user-select: none;
 }

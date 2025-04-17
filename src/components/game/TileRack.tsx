@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Tile as TileType } from '@/types/scrabble';
 import Tile from './Tile';
 import { cn } from '@/lib/utils';
@@ -32,6 +32,9 @@ const TileRack: React.FC<TileRackProps> = ({
   onReturnTileToRack,
 }) => {
   const [draggedTileId, setDraggedTileId] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const rackRef = useRef<HTMLDivElement>(null);
+  const tilesContainerRef = useRef<HTMLDivElement>(null);
 
   const handleTileDragStart = (e: React.DragEvent, tile: TileType) => {
     setDraggedTileId(tile.id);
@@ -40,36 +43,85 @@ const TileRack: React.FC<TileRackProps> = ({
 
   const handleTileDragEnd = () => {
     setDraggedTileId(null);
+    setIsDragOver(false);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    if (!isDragOver) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    // Only set to false if we're actually leaving the component and not entering a child
+    const relatedTarget = e.relatedTarget as Node;
+    if (rackRef.current && !rackRef.current.contains(relatedTarget)) {
+      setIsDragOver(false);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    setIsDragOver(false);
     const tileId = e.dataTransfer.getData('text/plain');
     if (tileId && onReturnTileToRack) {
       onReturnTileToRack(tileId);
     }
   };
 
+  // Handler for custom touch-based drop from board to rack
+  const handleRackDrop = useCallback((e: Event) => {
+    const customEvent = e as CustomEvent;
+    if (customEvent.detail && customEvent.detail.tileId && onReturnTileToRack) {
+      onReturnTileToRack(customEvent.detail.tileId);
+    }
+  }, [onReturnTileToRack]);
+
+  // Set up listeners for custom rack-drop events from touch
+  useEffect(() => {
+    const rackElement = rackRef.current;
+    const tilesContainer = tilesContainerRef.current;
+    
+    if (rackElement) {
+      rackElement.addEventListener('rack-drop', handleRackDrop);
+    }
+    
+    if (tilesContainer) {
+      tilesContainer.addEventListener('rack-drop', handleRackDrop);
+    }
+    
+    return () => {
+      if (rackElement) {
+        rackElement.removeEventListener('rack-drop', handleRackDrop);
+      }
+      
+      if (tilesContainer) {
+        tilesContainer.removeEventListener('rack-drop', handleRackDrop);
+      }
+    };
+  }, [handleRackDrop]);
+
   return (
     <div 
+      ref={rackRef}
       className={cn(
         "glass-panel w-full animate-slide-up",
-        "p-2 sm:p-3 rounded-md"
+        "p-1 sm:p-2 rounded-md",
+        "tile-rack-container", // Add this class for touch event detection
+        isDragOver && "drag-over" // Apply drag-over styling
       )}
       onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       <div className={cn(
         "flex justify-between items-center",
-        "mb-3"
+        "mb-2"
       )}>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <h2 className="text-xs font-medium text-gray-500">
-            Your Tiles <span className="font-semibold">({tilesRemaining} left)</span>
+            Tiles <span className="font-semibold">({tilesRemaining})</span>
           </h2>
           {wordScore !== undefined && wordScore > 0 && (
             <span className="text-xs text-green-600">+{wordScore}</span>
@@ -83,7 +135,7 @@ const TileRack: React.FC<TileRackProps> = ({
             className={cn(
               'flex items-center gap-1',
               canPlay ? 'bg-green-600 hover:bg-green-700' : '',
-              'p-1 sm:p-2 text-xs'
+              'p-1 text-xs h-7'
             )}
             title="Play Word"
           >
@@ -96,7 +148,7 @@ const TileRack: React.FC<TileRackProps> = ({
             onClick={onRecallTiles}
             className={cn(
               "flex items-center gap-1",
-              "p-1 sm:p-2 text-xs"
+              "p-1 text-xs h-7"
             )}
             title="Recall Tiles"
           >
@@ -109,7 +161,7 @@ const TileRack: React.FC<TileRackProps> = ({
             onClick={onShuffleTiles}
             className={cn(
               "flex items-center gap-1",
-              "p-1 sm:p-2 text-xs"
+              "p-1 text-xs h-7"
             )}
             title="Shuffle Tiles"
           >
@@ -120,8 +172,10 @@ const TileRack: React.FC<TileRackProps> = ({
       </div>
 
       <div 
-        className="flex flex-wrap gap-2 justify-center mt-3 mb-1"
+        ref={tilesContainerRef}
+        className="flex flex-wrap gap-1 sm:gap-2 justify-center mt-2 mb-1 tile-rack-drop-zone"
         onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         {tiles.map((tile) => (
@@ -129,7 +183,7 @@ const TileRack: React.FC<TileRackProps> = ({
             key={tile.id}
             className={cn(
               "transition-transform duration-200",
-              "w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12"
+              "w-8 h-8 sm:w-9 sm:h-9 md:w-11 md:h-11"
             )}
             onDragEnd={handleTileDragEnd}
           >
