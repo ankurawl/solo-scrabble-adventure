@@ -1,0 +1,30 @@
+name: Deploy to Firebase Hosting
+
+on:
+  push:
+    branches:
+      - main  # Change this to your default branch if different
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '22'  # Use the version you need
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build
+        run: npm run build  # Adjust if your build command is different
+
+      - name: Deploy to Firebase Hosting
+        run: |
+          npm install -g firebase-tools
+          firebase deploy --token ${{ secrets.FIREBASE_TOKEN }}
