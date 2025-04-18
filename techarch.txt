@@ -1,0 +1,141 @@
+### 1. Core Technology Stack
+
+**Frontend:**
+- **Framework**: React 18.3.1 with TypeScript
+- **Build Tool**: Vite 5.4.1
+- **Styling**: TailwindCSS 3.4.11 with PostCSS
+- **Type Checking**: TypeScript 5.5.3
+
+**Development Environment:**
+- **Package Manager**: npm/bun (both supported)
+- **Linting**: ESLint 9.9.0
+- **Code Formatting**: TypeScript ESLint
+
+### 2. Frontend Architecture
+
+**Component Structure:**
+```
+src/
+├── components/    # Reusable UI components
+├── pages/        # Route-based page components
+├── hooks/        # Custom React hooks
+├── utils/        # Utility functions
+├── lib/          # Core business logic
+├── types/        # TypeScript type definitions
+└── main.tsx      # Application entry point
+```
+
+**Key UI Libraries:**
+1. **Component Framework**: shadcn/ui (based on Radix UI primitives)
+   - Provides accessible, customizable components
+   - Uses Radix UI primitives for complex interactions
+   - Tailwind-based styling system
+
+2. **UI Components & Features:**
+   - Form handling: `react-hook-form` with `zod` validation
+   - Routing: `react-router-dom` v6
+   - State Management: React Query (`@tanstack/react-query`)
+   - Icons: `lucide-react`
+   - Theming: `next-themes`
+   - Toast notifications: `sonner`
+   - Date handling: `date-fns`
+
+### 3. Application Features & Logic
+
+**Core Game Components:**
+1. **Board Management**
+   - Scrabble board rendering
+   - Tile placement logic
+   - Score calculation
+   - Word validation
+
+2. **Player Interaction**
+   - Drag and drop tile placement
+   - Rack management
+   - Turn management
+   - Score tracking
+
+3. **Game Rules Engine**
+   - Word validation
+   - Score calculation
+   - Board state management
+   - Game progression logic
+
+### 4. Data Flow Architecture
+
+1. **State Management**
+   - React Query for server state
+   - Local state using React hooks
+   - Form state using react-hook-form
+
+2. **Data Validation**
+   - Zod for runtime type checking
+   - TypeScript for static type checking
+
+### 5. Styling Architecture
+
+1. **CSS Framework**: TailwindCSS
+   - Custom configuration in `tailwind.config.ts`
+   - Component-level styling
+   - Responsive design utilities
+   - Animation support via `tailwindcss-animate`
+
+2. **Theme Support**
+   - Dark/light mode support via `next-themes`
+   - Custom color schemes
+   - Consistent design tokens
+
+### 6. Development Tooling
+
+1. **Build System**
+   - Vite for fast development and optimized production builds
+   - SWC for fast compilation (`@vitejs/plugin-react-swc`)
+
+2. **Code Quality**
+   - ESLint for code linting
+   - TypeScript for type safety
+   - Prettier for code formatting
+
+### 7. Performance Optimizations
+
+1. **Client-side**
+   - React.lazy for code splitting
+   - Optimized asset loading
+   - Tailwind's JIT compiler
+   - Vite's build optimizations
+
+2. **Development Experience**
+   - Hot Module Replacement (HMR)
+   - Fast refresh
+   - TypeScript type checking
+
+### 8. Key Files and Their Responsibilities
+
+1. `src/main.tsx`
+   - Application entry point
+   - Router setup
+   - Global providers
+
+2. `src/App.tsx`
+   - Root component
+   - Layout structure
+   - Route definitions
+
+3. `src/lib/`
+   - Game logic
+   - Word validation
+   - Score calculation
+   - Board state management
+
+4. `src/components/`
+   - Reusable UI components
+   - Game board
+   - Tile rack
+   - Score display
+   - Game controls
+
+5. `src/hooks/`
+   - Custom game logic hooks
+   - State management hooks
+   - Utility hooks
+
