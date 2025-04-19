@@ -6,6 +6,10 @@ import { Button } from '@/components/ui/button';
 import { RefreshCcw } from 'lucide-react';
 import { Tile, BoardCell, GameState } from '@/types/scrabble';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/context/AuthContext';
+import { saveGameState, loadGameState } from '@/lib/firebase';
+import UserProfile from './UserProfile';
+import LoadGameDialog from './LoadGameDialog';
 import { 
   createBoard, 
   createTileBag, 
@@ -19,6 +23,7 @@ import {
 
 const ScrabbleGame: React.FC = () => {
   const isMobile = useIsMobile();
+  const { currentUser } = useAuth();
   const [gameState, setGameState] = useState<GameState>({
     board: { cells: createBoard() },
     rack: [],
@@ -32,10 +37,22 @@ const ScrabbleGame: React.FC = () => {
   const [placedTiles, setPlacedTiles] = useState<{ row: number; col: number; tile: Tile }[]>([]);
   const [potentialScore, setPotentialScore] = useState<number | undefined>(undefined);
   const [isCenterOccupied, setIsCenterOccupied] = useState(false);
+  const [showLoadDialog, setShowLoadDialog] = useState(false);
+  const [savedGameData, setSavedGameData] = useState<{
+    gameState: GameState;
+    lastUpdated: string;
+  } | null>(null);
 
   useEffect(() => {
     startNewGame();
   }, []);
+
+  // Check for saved game when user logs in
+  useEffect(() => {
+    if (currentUser) {
+      checkForSavedGame();
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     if (placedTiles.length > 0) {
@@ -77,6 +94,80 @@ const ScrabbleGame: React.FC = () => {
       setPotentialScore(undefined);
     }
   }, [placedTiles, gameState.board.cells, isCenterOccupied]);
+
+  const checkForSavedGame = async () => {
+    if (currentUser) {
+      try {
+        const savedGame = await loadGameState(currentUser.uid);
+        if (savedGame && savedGame.gameState) {
+          setSavedGameData({
+            gameState: savedGame.gameState,
+            lastUpdated: savedGame.lastUpdated
+          });
+          setShowLoadDialog(true);
+        }
+      } catch (error) {
+        console.error("Error checking for saved game:", error);
+      }
+    }
+  };
+
+  const handleSaveGame = async () => {
+    if (!currentUser) {
+      toast.error("Please sign in to save your game");
+      return;
+    }
+
+    try {
+      const gameStateToSave = {
+        ...gameState,
+        // Include placed tiles that haven't been committed yet
+        placedTiles,
+        isCenterOccupied
+      };
+
+      await saveGameState(currentUser.uid, gameStateToSave);
+      toast.success("Game saved successfully");
+    } catch (error) {
+      console.error("Error saving game:", error);
+      toast.error("Failed to save game");
+    }
+  };
+
+  const handleLoadSavedGame = () => {
+    if (savedGameData && savedGameData.gameState) {
+      const loadedState = savedGameData.gameState;
+      
+      setGameState({
+        board: loadedState.board,
+        rack: loadedState.rack,
+        bag: loadedState.bag,
+        score: loadedState.score,
+        currentWord: loadedState.currentWord,
+        isPlaying: true
+      });
+      
+      if (loadedState.placedTiles) {
+        setPlacedTiles(loadedState.placedTiles);
+      } else {
+        setPlacedTiles([]);
+      }
+      
+      if (loadedState.isCenterOccupied !== undefined) {
+        setIsCenterOccupied(loadedState.isCenterOccupied);
+      } else {
+        // Check if center is occupied by looking at the board
+        setIsCenterOccupied(!!loadedState.board.cells[7][7].tile);
+      }
+      
+      setShowLoadDialog(false);
+      toast.success("Game loaded successfully");
+    }
+  };
+
+  const handleContinueCurrentGame = () => {
+    setShowLoadDialog(false);
+  };
 
   const startNewGame = useCallback(() => {
     const newBoard = createBoard();
@@ -373,6 +464,11 @@ const ScrabbleGame: React.FC = () => {
       const wordsPlayed = actualWordsPlayed.join(', ');
       toast.success(`Played: ${wordsPlayed} for ${moveScore} points!`);
       
+      // Auto-save game after playing a word if the user is logged in
+      if (currentUser) {
+        await handleSaveGame();
+      }
+      
       if (drawn.length < placedTiles.length && remaining.length === 0) {
         if (gameState.rack.length === 0) {
           toast.success(`Game over! Final score: ${gameState.score + moveScore}`);
@@ -386,7 +482,7 @@ const ScrabbleGame: React.FC = () => {
       toast.error('Error validating words. Please try again.');
       console.error('Word validation error:', error);
     }
-  }, [gameState, placedTiles, isCenterOccupied]);
+  }, [gameState, placedTiles, isCenterOccupied, currentUser]);
 
   const handleReturnTileToRack = useCallback((tileId: string) => {
     // Find the placed tile to return
@@ -429,9 +525,20 @@ const ScrabbleGame: React.FC = () => {
         <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-center">Solo Scrabble</h1>
       </div>
 
+      {/* Load Game Dialog */}
+      {savedGameData && (
+        <LoadGameDialog
+          isOpen={showLoadDialog}
+          lastSaved={new Date(savedGameData.lastUpdated).toLocaleString()}
+          onClose={() => setShowLoadDialog(false)}
+          onLoadGame={handleLoadSavedGame}
+          onContinueCurrentGame={handleContinueCurrentGame}
+        />
+      )}
+
       {/* Fixed layout across all screen sizes */}
       <div className="w-full flex flex-col h-[calc(100vh-5rem)] max-h-[1200px]">
-        {/* Fixed header with score */}
+        {/* Fixed header with score and user profile */}
         <div className="sticky top-0 z-10 w-full flex justify-between items-center py-1 px-2 bg-background/90 backdrop-blur-sm">
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-500">Score:</span>
@@ -442,16 +549,19 @@ const ScrabbleGame: React.FC = () => {
               )}
             </span>
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={startNewGame}
-            className="flex items-center gap-1 p-1"
-            title="New Game"
-          >
-            <RefreshCcw className="h-4 w-4" />
-            <span className="text-xs">New Game</span>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={startNewGame}
+              className="flex items-center gap-1 p-1"
+              title="New Game"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              <span className="text-xs">New Game</span>
+            </Button>
+            <UserProfile onSaveGame={handleSaveGame} />
+          </div>
         </div>
         
         {/* Fixed board size with proper container */}

@@ -1,4 +1,3 @@
-
 export interface Tile {
   id: string;
   letter: string;
@@ -18,12 +17,14 @@ export interface BoardState {
 }
 
 export interface GameState {
-  board: BoardState;
+  board: { cells: BoardCell[][] };
   rack: Tile[];
   bag: Tile[];
   score: number;
   currentWord: Tile[];
   isPlaying: boolean;
+  placedTiles?: { row: number; col: number; tile: Tile }[];
+  isCenterOccupied?: boolean;
 }
 
 export type Direction = 'horizontal' | 'vertical';
