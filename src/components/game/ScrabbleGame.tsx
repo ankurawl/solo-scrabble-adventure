@@ -138,27 +138,38 @@ const ScrabbleGame: React.FC = () => {
     if (savedGameData && savedGameData.gameState) {
       const loadedState = savedGameData.gameState;
       
+      // Ensure placedTiles are properly initialized
+      let loadedPlacedTiles: { row: number; col: number; tile: Tile }[] = [];
+      
+      if (loadedState.placedTiles && Array.isArray(loadedState.placedTiles)) {
+        // Make sure each tile in placedTiles has the correct structure
+        loadedPlacedTiles = loadedState.placedTiles.map(pt => ({
+          row: pt.row,
+          col: pt.col,
+          tile: {
+            ...pt.tile,
+            // Make sure isPlaced is properly set
+            isPlaced: false // These are tiles from current turn, so they're not permanently placed
+          }
+        }));
+      }
+      
       setGameState({
         board: loadedState.board,
         rack: loadedState.rack,
         bag: loadedState.bag,
         score: loadedState.score,
-        currentWord: loadedState.currentWord,
+        currentWord: loadedState.currentWord || [],
         isPlaying: true
       });
       
-      if (loadedState.placedTiles) {
-        setPlacedTiles(loadedState.placedTiles);
-      } else {
-        setPlacedTiles([]);
-      }
+      setPlacedTiles(loadedPlacedTiles);
       
-      if (loadedState.isCenterOccupied !== undefined) {
-        setIsCenterOccupied(loadedState.isCenterOccupied);
-      } else {
-        // Check if center is occupied by looking at the board
-        setIsCenterOccupied(!!loadedState.board.cells[7][7].tile);
-      }
+      const centerOccupied = loadedState.isCenterOccupied !== undefined 
+        ? loadedState.isCenterOccupied 
+        : (loadedState.board.cells[7][7].tile != null);
+      
+      setIsCenterOccupied(centerOccupied);
       
       setShowLoadDialog(false);
       toast.success("Game loaded successfully");
@@ -445,15 +456,17 @@ const ScrabbleGame: React.FC = () => {
       const tilesToDraw = Math.min(placedTiles.length, gameState.bag.length);
       const { drawn, remaining } = drawTiles(gameState.bag, tilesToDraw);
       
-      setGameState(prev => ({
-        ...prev,
+      // Update the game state with the played word
+      const updatedGameState = {
+        ...gameState,
         board: { cells: newBoard },
-        rack: [...prev.rack, ...drawn],
+        rack: [...gameState.rack, ...drawn],
         bag: remaining,
-        score: prev.score + moveScore
-      }));
+        score: gameState.score + moveScore
+      };
       
       // Clear the placedTiles array since they're now part of the board
+      setGameState(updatedGameState);
       setPlacedTiles([]);
       setPotentialScore(undefined);
       
@@ -465,8 +478,16 @@ const ScrabbleGame: React.FC = () => {
       toast.success(`Played: ${wordsPlayed} for ${moveScore} points!`);
       
       // Auto-save game after playing a word if the user is logged in
+      // Only save after the game state and placedTiles have been updated
       if (currentUser) {
-        await handleSaveGame();
+        // We need to save the updated game state, not the previous one
+        const gameStateToSave = {
+          ...updatedGameState,
+          placedTiles: [], // Explicitly save empty placed tiles
+          isCenterOccupied: isCenterOccupied || (newBoard[7][7].tile != null)
+        };
+        
+        await saveGameState(currentUser.uid, gameStateToSave);
       }
       
       if (drawn.length < placedTiles.length && remaining.length === 0) {
