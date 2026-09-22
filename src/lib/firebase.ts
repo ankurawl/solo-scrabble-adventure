@@ -3,6 +3,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from "firebase/auth";
 import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { getAnalytics } from "firebase/analytics";
+import type { BoardCell, GameState } from "@/types/scrabble";
 
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
@@ -27,6 +28,22 @@ const analytics = getAnalytics(app);
 const db = getFirestore(app);
 const googleProvider = new GoogleAuthProvider();
 
+type FirestoreBoardCells = Record<string, Record<string, BoardCell>>;
+
+type FirestoreGameState = Omit<GameState, "board"> & {
+  board: { cells: FirestoreBoardCells };
+};
+
+interface SavedGameDocument {
+  gameState?: FirestoreGameState;
+  lastUpdated?: string;
+}
+
+interface SavedGame {
+  gameState: GameState;
+  lastUpdated: string;
+}
+
 // Sign in with Google
 const signInWithGoogle = async () => {
   try {
@@ -49,60 +66,50 @@ const signOutUser = async () => {
 };
 
 // Helper function to convert game state to Firestore-compatible format
-const convertGameStateForFirestore = (gameState: any) => {
-  // Create a deep copy of the gameState
-  const firebaseGameState = JSON.parse(JSON.stringify(gameState));
-  
-  // Process the board cells (which likely contain nested arrays)
-  if (firebaseGameState.board && firebaseGameState.board.cells) {
-    // Convert 2D array to an object with numbered keys
-    const cellsObject: Record<string, Record<string, any>> = {};
-    
-    firebaseGameState.board.cells.forEach((row: any[], rowIndex: number) => {
-      cellsObject[rowIndex.toString()] = {};
-      row.forEach((cell: any, colIndex: number) => {
-        cellsObject[rowIndex.toString()][colIndex.toString()] = cell;
-      });
+const convertGameStateForFirestore = (gameState: GameState): FirestoreGameState => {
+  const gameStateCopy = JSON.parse(JSON.stringify(gameState)) as GameState;
+  const cellsObject: FirestoreBoardCells = {};
+
+  gameStateCopy.board.cells.forEach((row, rowIndex) => {
+    cellsObject[rowIndex.toString()] = {};
+    row.forEach((cell, colIndex) => {
+      cellsObject[rowIndex.toString()][colIndex.toString()] = cell;
     });
-    
-    // Replace the cells array with the object representation
-    firebaseGameState.board.cells = cellsObject;
-  }
-  
-  return firebaseGameState;
+  });
+
+  return {
+    ...gameStateCopy,
+    board: { cells: cellsObject },
+  };
 };
 
 // Helper function to convert Firestore data back to app format
-const convertFirestoreToGameState = (firestoreData: any) => {
-  const appGameState = JSON.parse(JSON.stringify(firestoreData));
-  
-  // Convert board cells object back to 2D array
-  if (appGameState.board && appGameState.board.cells) {
-    const cellsObject = appGameState.board.cells;
-    const rows = Object.keys(cellsObject).length;
-    const cols = Object.keys(cellsObject['0']).length;
-    
-    // Create empty 2D array
-    const cellsArray: any[][] = Array(rows).fill(null).map(() => Array(cols).fill(null));
-    
-    // Fill the array with values from the object
-    Object.keys(cellsObject).forEach(rowKey => {
-      const rowIndex = parseInt(rowKey);
-      Object.keys(cellsObject[rowKey]).forEach(colKey => {
-        const colIndex = parseInt(colKey);
-        cellsArray[rowIndex][colIndex] = cellsObject[rowKey][colKey];
-      });
+const convertFirestoreToGameState = (firestoreData: FirestoreGameState): GameState => {
+  const firestoreGameState = JSON.parse(JSON.stringify(firestoreData)) as FirestoreGameState;
+  const cellsObject = firestoreGameState.board.cells;
+  const rows = Object.keys(cellsObject).length;
+  const cols = Object.keys(cellsObject["0"]).length;
+  const cellsArray: BoardCell[][] = Array.from(
+    { length: rows },
+    () => Array<BoardCell>(cols),
+  );
+
+  Object.entries(cellsObject).forEach(([rowKey, row]) => {
+    const rowIndex = Number.parseInt(rowKey, 10);
+    Object.entries(row).forEach(([colKey, cell]) => {
+      const colIndex = Number.parseInt(colKey, 10);
+      cellsArray[rowIndex][colIndex] = cell;
     });
-    
-    // Replace the cells object with the array
-    appGameState.board.cells = cellsArray;
-  }
-  
-  return appGameState;
+  });
+
+  return {
+    ...firestoreGameState,
+    board: { cells: cellsArray },
+  };
 };
 
 // Save game state to Firestore
-const saveGameState = async (userId: string, gameState: any) => {
+const saveGameState = async (userId: string, gameState: GameState) => {
   try {
     // Convert the game state to a Firestore-compatible format
     const firebaseGameState = convertGameStateForFirestore(gameState);
@@ -119,26 +126,24 @@ const saveGameState = async (userId: string, gameState: any) => {
 };
 
 // Load game state from Firestore
-const loadGameState = async (userId: string) => {
+const loadGameState = async (userId: string): Promise<SavedGame | null> => {
   try {
     const docRef = doc(db, "gameStates", userId);
     const docSnap = await getDoc(docRef);
-    
-    if (docSnap.exists()) {
-      const firestoreData = docSnap.data();
-      
-      // If gameState exists, convert it back to the app format
-      if (firestoreData.gameState) {
-        return {
-          gameState: convertFirestoreToGameState(firestoreData.gameState),
-          lastUpdated: firestoreData.lastUpdated
-        };
-      }
-      
-      return firestoreData;
-    } else {
+
+    if (!docSnap.exists()) {
       return null;
     }
+
+    const firestoreData = docSnap.data() as SavedGameDocument;
+    if (!firestoreData.gameState) {
+      return null;
+    }
+
+    return {
+      gameState: convertFirestoreToGameState(firestoreData.gameState),
+      lastUpdated: firestoreData.lastUpdated ?? "",
+    };
   } catch (error) {
     console.error("Error loading game state", error);
     throw error;

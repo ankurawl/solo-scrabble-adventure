@@ -2,7 +2,6 @@ import React, { useRef, useEffect, useCallback } from 'react';
 import { BoardCell as BoardCellType, Tile as TileType } from '@/types/scrabble';
 import Tile from './Tile';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 interface BoardCellProps {
   cell: BoardCellType;
@@ -10,7 +9,6 @@ interface BoardCellProps {
   onDragOver: (e: React.DragEvent) => void;
   highlightedCells?: { row: number; col: number }[];
   placedTile?: TileType | null;
-  isMobile?: boolean;
   isCurrentTurnPlacement?: boolean;
   onTileDragStart?: (e: React.DragEvent, tile: TileType) => void;
 }
@@ -21,7 +19,6 @@ const BoardCell: React.FC<BoardCellProps> = ({
   onDragOver,
   highlightedCells = [],
   placedTile = null,
-  isMobile = useIsMobile(),
   isCurrentTurnPlacement = false,
   onTileDragStart,
 }) => {

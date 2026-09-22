@@ -28,9 +28,11 @@ const TileRack: React.FC<TileRackProps> = ({
   onRecallTiles,
   canPlay,
   wordScore,
-  isMobile = useIsMobile(),
+  isMobile: isMobileProp,
   onReturnTileToRack,
 }) => {
+  const detectedIsMobile = useIsMobile();
+  const isMobile = isMobileProp ?? detectedIsMobile;
   const [draggedTileId, setDraggedTileId] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const rackRef = useRef<HTMLDivElement>(null);

@@ -15,7 +15,7 @@ interface TileProps {
 }
 
 const Tile: React.FC<TileProps> = ({
-  isMobile = useIsMobile(),
+  isMobile: isMobileProp,
   tile,
   isDragging = false,
   isPlayable = true,
@@ -24,6 +24,8 @@ const Tile: React.FC<TileProps> = ({
   // Default to false - older tiles are not current turn placements
   isCurrentTurnPlacement = false,
 }) => {
+  const detectedIsMobile = useIsMobile();
+  const isMobile = isMobileProp ?? detectedIsMobile;
   const tileRef = useRef<HTMLDivElement>(null);
   const touchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartPosRef = useRef<{ x: number, y: number } | null>(null);
