@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "solo-scrabble-9aa75",
     "public": "dist",
     "ignore": [
       "firebase.json",
