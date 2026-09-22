@@ -69,7 +69,7 @@ const ScrabbleGame: React.FC = () => {
         
         if (wordObjects.length > 0) {
           let totalScore = 0;
-          let invalidWords: string[] = [];
+          const invalidWords: string[] = [];
           
           wordObjects.forEach(({ word, tiles, cells, direction }) => {
             if (!isValidWord(word)) {

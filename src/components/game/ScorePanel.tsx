@@ -2,17 +2,14 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { RefreshCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ScorePanelProps {
   score: number;
   onNewGame: () => void;
   wordScore?: number;
-  isMobile?: boolean;
 }
 
 const ScorePanel: React.FC<ScorePanelProps> = ({
-  isMobile = useIsMobile(),
   score,
   onNewGame,
   wordScore,
