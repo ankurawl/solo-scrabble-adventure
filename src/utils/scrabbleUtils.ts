@@ -164,27 +164,33 @@ export const shuffleArray = <T>(array: T[]): T[] => {
   return shuffled;
 };
 
-// Helper function to check word with retries
-const checkWordWithRetry = async (word: string, maxRetries: number = 3): Promise<boolean> => {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`);
-      if (response.status === 200) {
-        return true;
-      }
-      if (response.status === 404) {
-        return false;
-      }
-      // For other status codes, wait and retry
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-    } catch (error) {
-      console.warn(`API attempt ${attempt} failed:`, error);
-      if (attempt === maxRetries) {
-        return DICTIONARY.includes(word.toLowerCase());
-      }
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+// Validate a word with the remote dictionary without blocking a turn indefinitely.
+const WORD_VALIDATION_TIMEOUT_MS = 3_000;
+
+const checkWord = async (word: string): Promise<boolean> => {
+  const controller = new AbortController();
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), WORD_VALIDATION_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(
+      `https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`,
+      { signal: controller.signal },
+    );
+
+    if (response.status === 200) {
+      return true;
     }
+    if (response.status === 404) {
+      return false;
+    }
+
+    console.warn(`Dictionary API returned ${response.status}; using the local dictionary.`);
+  } catch (error) {
+    console.warn("Dictionary API was unavailable; using the local dictionary.", error);
+  } finally {
+    globalThis.clearTimeout(timeoutId);
   }
+
   return DICTIONARY.includes(word.toLowerCase());
 };
 
@@ -203,7 +209,7 @@ export const isValidWord = async (word: string): Promise<{ isValid: boolean; act
       const commonLetters = 'ETAOINSHRDLCUMWFGYPBVKJXQZ';
       for (const letter of commonLetters) {
         const testWord = word.replace(' ', letter);
-        const isValid = await checkWordWithRetry(testWord);
+        const isValid = await checkWord(testWord);
         if (isValid) {
           return { isValid: true, actualWord: testWord };
         }
@@ -211,7 +217,7 @@ export const isValidWord = async (word: string): Promise<{ isValid: boolean; act
       return { isValid: false, actualWord: word };
     }
 
-    const isValid = await checkWordWithRetry(word);
+    const isValid = await checkWord(word);
     return { isValid, actualWord: word };
   } catch (error) {
     console.warn('All API attempts failed, falling back to local dictionary:', error);
