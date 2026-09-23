@@ -177,101 +177,21 @@ export const shuffleArray = <T>(array: T[]): T[] => {
   return shuffled;
 };
 
-// Keep remote validation bounded so a provider outage cannot block a turn.
-const WORD_VALIDATION_TIMEOUT_MS = 1_500;
-
-const fetchWithTimeout = async (url: string): Promise<Response> => {
-  const controller = new AbortController();
-  const timeoutId = globalThis.setTimeout(() => controller.abort(), WORD_VALIDATION_TIMEOUT_MS);
-
-  try {
-    return await fetch(url, { signal: controller.signal });
-  } finally {
-    globalThis.clearTimeout(timeoutId);
-  }
-};
-
-const checkWord = async (word: string): Promise<boolean> => {
-  const normalizedWord = word.toLowerCase();
-
-  try {
-    const response = await fetchWithTimeout(
-      `https://api.dictionaryapi.dev/api/v2/entries/en/${normalizedWord}`,
-    );
-
-    if (response.status === 200) {
-      return true;
-    }
-    if (response.status !== 404) {
-      console.warn(`Dictionary API returned ${response.status}; trying Datamuse.`);
-    }
-  } catch (error) {
-    console.warn("Dictionary API was unavailable; trying Datamuse.", error);
-  }
-
-  try {
-    const response = await fetchWithTimeout(
-      `https://api.datamuse.com/words?sp=${encodeURIComponent(normalizedWord)}&max=5`,
-    );
-
-    if (response.ok) {
-      const matches = await response.json() as Array<{ word?: string }>;
-      if (matches.some(({ word: match }) => match?.toLowerCase() === normalizedWord)) {
-        return true;
-      }
-    } else {
-      console.warn(`Datamuse returned ${response.status}; using the bundled dictionary.`);
-    }
-  } catch (error) {
-    console.warn("Datamuse was unavailable; using the bundled dictionary.", error);
-  }
-
-  return await isBundledWord(word);
-};
-
-// Validate if the word is in the dictionary using an external API
+// Validate words exclusively against the bundled, MIT-licensed word list.
 export const isValidWord = async (word: string): Promise<{ isValid: boolean; actualWord: string }> => {
-  if (!word.includes(' ') && await isBundledWord(word)) {
-    return { isValid: true, actualWord: word };
+  if (!word.includes(" ")) {
+    return { isValid: await isBundledWord(word), actualWord: word };
   }
 
-  try {
-    if (word.includes(' ')) {
-      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-      for (const letter of alphabet) {
-        const testWord = word.replace(' ', letter);
-        if (await isBundledWord(testWord)) {
-          return { isValid: true, actualWord: testWord };
-        }
-      }
-
-      const commonLetters = 'ETAOINSHRDLCUMWFGYPBVKJXQZ';
-      for (const letter of commonLetters) {
-        const testWord = word.replace(' ', letter);
-        const isValid = await checkWord(testWord);
-        if (isValid) {
-          return { isValid: true, actualWord: testWord };
-        }
-      }
-      return { isValid: false, actualWord: word };
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  for (const letter of alphabet) {
+    const testWord = word.replace(" ", letter);
+    if (await isBundledWord(testWord)) {
+      return { isValid: true, actualWord: testWord };
     }
-
-    const isValid = await checkWord(word);
-    return { isValid, actualWord: word };
-  } catch (error) {
-    console.warn('All API attempts failed, falling back to local dictionary:', error);
-    if (word.includes(' ')) {
-      const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-      for (const letter of alphabet) {
-        const testWord = word.replace(' ', letter);
-        if (await isBundledWord(testWord)) {
-          return { isValid: true, actualWord: testWord };
-        }
-      }
-      return { isValid: false, actualWord: word };
-    }
-    return { isValid: DICTIONARY.includes(word.toLowerCase()), actualWord: word };
   }
+
+  return { isValid: false, actualWord: word };
 };
 
 // Calculate word score with premium squares
