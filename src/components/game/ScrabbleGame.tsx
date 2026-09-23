@@ -10,6 +10,11 @@ import { useAuth } from '@/context/AuthContext';
 import { saveGameState, loadGameState } from '@/lib/firebase';
 import UserProfile from './UserProfile';
 import LoadGameDialog from './LoadGameDialog';
+import {
+  showValidationError,
+  showValidationInProgress,
+  showValidationSuccess,
+} from '@/utils/validationToast';
 import { 
   createBoard, 
   createTileBag, 
@@ -416,7 +421,7 @@ const ScrabbleGame: React.FC = () => {
       return;
     }
     
-    const loadingToastId = toast.loading('Validating words...');
+    const loadingToastId = showValidationInProgress();
     
     try {
       const wordValidations = await Promise.all(
@@ -430,10 +435,11 @@ const ScrabbleGame: React.FC = () => {
         .filter(({ isValid }) => !isValid)
         .map(({ word }) => word);
       
-      toast.dismiss(loadingToastId);
-      
       if (invalidWords.length > 0) {
-        toast.error(`Invalid word${invalidWords.length > 1 ? 's' : ''}: ${invalidWords.join(', ')}`);
+        showValidationError(
+          loadingToastId,
+          `Invalid word${invalidWords.length > 1 ? 's' : ''}: ${invalidWords.join(', ')}`,
+        );
         return;
       }
       
@@ -475,7 +481,7 @@ const ScrabbleGame: React.FC = () => {
       }
       
       const wordsPlayed = actualWordsPlayed.join(', ');
-      toast.success(`Played: ${wordsPlayed} for ${moveScore} points!`);
+      showValidationSuccess(loadingToastId, `Played: ${wordsPlayed} for ${moveScore} points!`);
       
       // Auto-save game after playing a word if the user is logged in
       // Only save after the game state and placedTiles have been updated
@@ -499,8 +505,7 @@ const ScrabbleGame: React.FC = () => {
         }
       }
     } catch (error) {
-      toast.dismiss(loadingToastId);
-      toast.error('Error validating words. Please try again.');
+      showValidationError(loadingToastId, 'Error validating words. Please try again.');
       console.error('Word validation error:', error);
     }
   }, [gameState, placedTiles, isCenterOccupied, currentUser]);
