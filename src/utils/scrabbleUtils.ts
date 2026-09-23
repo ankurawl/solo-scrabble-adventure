@@ -56,6 +56,19 @@ export const DICTIONARY = [
   "copper", "tin", "lead", "zinc", "aluminum"
 ];
 
+// Load the SCOWL-based, MIT-licensed word lists only when a turn is validated.
+let bundledWordsPromise: Promise<Set<string>> | undefined;
+
+const loadBundledWords = (): Promise<Set<string>> => {
+  bundledWordsPromise ??= import("wordlist-js").then(({ americanAll, englishAll }) =>
+    new Set([...DICTIONARY, ...englishAll, ...americanAll].map((word) => word.toLowerCase())),
+  );
+  return bundledWordsPromise;
+};
+
+const isBundledWord = async (word: string): Promise<boolean> =>
+  (await loadBundledWords()).has(word.toLowerCase());
+
 // Generate a unique ID for tiles
 export const generateId = (): string => {
   return Math.random().toString(36).substring(2, 11);
@@ -164,44 +177,70 @@ export const shuffleArray = <T>(array: T[]): T[] => {
   return shuffled;
 };
 
-// Validate a word with the remote dictionary without blocking a turn indefinitely.
-const WORD_VALIDATION_TIMEOUT_MS = 3_000;
+// Keep remote validation bounded so a provider outage cannot block a turn.
+const WORD_VALIDATION_TIMEOUT_MS = 1_500;
 
-const checkWord = async (word: string): Promise<boolean> => {
+const fetchWithTimeout = async (url: string): Promise<Response> => {
   const controller = new AbortController();
   const timeoutId = globalThis.setTimeout(() => controller.abort(), WORD_VALIDATION_TIMEOUT_MS);
 
   try {
-    const response = await fetch(
-      `https://api.dictionaryapi.dev/api/v2/entries/en/${word.toLowerCase()}`,
-      { signal: controller.signal },
+    return await fetch(url, { signal: controller.signal });
+  } finally {
+    globalThis.clearTimeout(timeoutId);
+  }
+};
+
+const checkWord = async (word: string): Promise<boolean> => {
+  const normalizedWord = word.toLowerCase();
+
+  try {
+    const response = await fetchWithTimeout(
+      `https://api.dictionaryapi.dev/api/v2/entries/en/${normalizedWord}`,
     );
 
     if (response.status === 200) {
       return true;
     }
-    if (response.status === 404) {
-      return false;
+    if (response.status !== 404) {
+      console.warn(`Dictionary API returned ${response.status}; trying Datamuse.`);
     }
-
-    console.warn(`Dictionary API returned ${response.status}; using the local dictionary.`);
   } catch (error) {
-    console.warn("Dictionary API was unavailable; using the local dictionary.", error);
-  } finally {
-    globalThis.clearTimeout(timeoutId);
+    console.warn("Dictionary API was unavailable; trying Datamuse.", error);
   }
 
-  return DICTIONARY.includes(word.toLowerCase());
+  try {
+    const response = await fetchWithTimeout(
+      `https://api.datamuse.com/words?sp=${encodeURIComponent(normalizedWord)}&max=5`,
+    );
+
+    if (response.ok) {
+      const matches = await response.json() as Array<{ word?: string }>;
+      if (matches.some(({ word: match }) => match?.toLowerCase() === normalizedWord)) {
+        return true;
+      }
+    } else {
+      console.warn(`Datamuse returned ${response.status}; using the bundled dictionary.`);
+    }
+  } catch (error) {
+    console.warn("Datamuse was unavailable; using the bundled dictionary.", error);
+  }
+
+  return await isBundledWord(word);
 };
 
 // Validate if the word is in the dictionary using an external API
 export const isValidWord = async (word: string): Promise<{ isValid: boolean; actualWord: string }> => {
+  if (!word.includes(' ') && await isBundledWord(word)) {
+    return { isValid: true, actualWord: word };
+  }
+
   try {
     if (word.includes(' ')) {
       const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
       for (const letter of alphabet) {
         const testWord = word.replace(' ', letter);
-        if (DICTIONARY.includes(testWord.toLowerCase())) {
+        if (await isBundledWord(testWord)) {
           return { isValid: true, actualWord: testWord };
         }
       }
@@ -225,7 +264,7 @@ export const isValidWord = async (word: string): Promise<{ isValid: boolean; act
       const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
       for (const letter of alphabet) {
         const testWord = word.replace(' ', letter);
-        if (DICTIONARY.includes(testWord.toLowerCase())) {
+        if (await isBundledWord(testWord)) {
           return { isValid: true, actualWord: testWord };
         }
       }
