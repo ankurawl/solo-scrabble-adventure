@@ -83,7 +83,13 @@
     "tailwindcss": "^3.4.11",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.70.1",
-    "vite": "^6.4.3",
-    "vitest": "^5.0.1"
+    "vite": "^6.4.5",
+    "vitest": "^5.0.5"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6",
+    "postcss-selector-parser": "^7.1.7",
+    "source-map-js": "^1.2.2",
+    "chokidar": "^4.0.3"
   }
 }
